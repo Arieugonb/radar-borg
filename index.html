@@ -1,0 +1,1393 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2a2e">
+<title>Radar Borg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout : en-tête collant + onglets, liste de cryptos classées par score, fiche détail en panneau du bas */
+:root{
+  --bg:#eef3f2; --panel:#ffffff; --ink:#132326; --muted:#5d7275; --line:#d5e0df;
+  --accent:#0f6e74; --accent-ink:#ffffff; --head:#0f2a2e; --head-ink:#e7f2f1;
+  --up:#1d8a4e; --down:#c2413b; --warn:#b97a10;
+  --display:"Manrope",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0b1517; --panel:#13221f; --ink:#e3eeec; --muted:#8fa6a3; --line:#22383a;
+  --accent:#3cb6ad; --accent-ink:#06201f; --head:#081113; --head-ink:#e3eeec;
+  --up:#4fcf86; --down:#ef6f67; --warn:#e3a93a; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--display);font-size:15px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--head);z-index:10}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--head);color:var(--head-ink)}
+header .wrap{padding-block:12px 0;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h1{font-size:1.35rem;font-weight:800;margin:0;letter-spacing:-.01em}
+h1 span{color:var(--accent)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.stamp{font-family:var(--mono);font-size:.72rem;opacity:.75;flex:1;min-width:0}
+button{font:inherit;cursor:pointer;border:0;border-radius:8px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{background:var(--accent);color:var(--accent-ink);padding:8px 12px;font-weight:600;font-size:.85rem}
+.btn.ghost{background:transparent;color:inherit;border:1px solid currentColor;opacity:.85}
+.btc{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--head-ink) 7%,transparent);font-size:.85rem}
+.btc .ico{width:26px;height:26px}
+.btc b{font-size:.95rem}
+.btc .v{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btc .up{color:#5fd896}.btc .down{color:#ff8a82}
+.btc .mood{flex-basis:100%;opacity:.85;line-height:1.4}
+.market{border-radius:10px;background:color-mix(in srgb,var(--head-ink) 7%,transparent);display:flex;flex-direction:column}
+.market .btc{background:none;border-radius:0}
+.senti{padding-block:8px 10px;border-top:1px solid color-mix(in srgb,var(--head-ink) 14%,transparent)}
+.sg{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-basis:100%}
+.sl{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+.gauge{position:relative;width:130px;height:8px;border-radius:4px;background:linear-gradient(90deg,#d9443c 0%,#e8833a 25%,#e3c53a 50%,#8fcf55 75%,#2fae5f 100%)}
+.gauge i{position:absolute;top:-4px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:#ffffff;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.sd{opacity:.7;font-size:.78rem}
+.tabs{display:flex;gap:4px}
+.tabs button{background:transparent;color:var(--head-ink);opacity:.65;padding:10px 12px;border-radius:0;border-bottom:3px solid transparent;font-weight:600}
+.tabs button[aria-selected=true]{opacity:1;border-bottom-color:var(--accent)}
+.bar{display:flex;gap:8px;padding-block:12px;align-items:center;flex-wrap:wrap}
+.bar input{flex:1;min-width:160px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit}
+.switch{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:6px 12px;color:var(--muted);font-weight:600;font-size:.85rem}
+.switch i{position:relative;width:38px;height:22px;border-radius:11px;background:var(--accent);flex:none}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--accent-ink);transition:transform .2s}
+.switch[aria-checked=true] i::after{transform:translateX(16px)}
+.switch[aria-checked=false] .s-l,.switch[aria-checked=true] .s-r{color:var(--ink)}
+@media (max-width:560px){ .switch{flex-basis:100%;justify-content:center} }
+.tops{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.tops button{background:transparent;color:var(--muted);padding:8px 11px;border-radius:0;font-weight:600;font-size:.82rem;border-right:1px solid var(--line)}
+.tops button:last-child{border-right:0}
+.tops button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.alertbar{border:1px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--panel));border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
+.ab-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ab-row{display:grid;grid-template-columns:52px 1fr;gap:8px;font-size:.86rem;line-height:1.4;padding-left:8px;border-left:3px solid var(--muted)}
+.ab-good{border-left-color:var(--up)} .ab-bad{border-left-color:var(--down)}
+.box .ab-row{margin-top:6px}
+.chk{display:flex;gap:8px;align-items:center;flex-wrap:wrap;line-height:1.5;margin-top:6px}
+.num{width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.hint{font-size:.85rem;color:var(--muted);margin:0 0 10px;line-height:1.45}
+.list{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ico{width:30px;height:30px;border-radius:50%;flex:none;background:var(--line);object-fit:cover;display:grid;place-items:center;font-weight:800;font-size:.75rem;color:var(--muted)}
+.ico.lg{width:40px;height:40px}
+.logo{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;width:34px}
+.rk{font-family:var(--mono);font-size:.66rem;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1}
+.name{display:flex;align-items:center;gap:10px;min-width:0}
+canvas.mini{width:76px;height:30px;display:block}
+canvas.btcmini{width:96px;height:28px}
+.row{display:grid;grid-template-columns:28px minmax(0,1fr) 76px auto 118px;gap:10px;align-items:center;padding:11px 12px;border-bottom:1px solid var(--line);background:none;color:inherit;text-align:left;border-radius:0;width:100%}
+.row:last-child{border-bottom:0}
+.row:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.star{font-size:1.05rem;color:var(--muted)} .star.on{color:var(--warn)}
+.coin{min-width:0}
+.coin b{font-weight:800}
+.ktag{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:99px;font-size:.66rem;font-weight:700;letter-spacing:.02em;vertical-align:1px;text-transform:none}
+.k-hi{background:var(--accent);color:var(--accent-ink)}
+.k-mid{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent)}
+.k-lo{border:1px solid var(--line);color:var(--muted)}
+.k-inv{border:1px dashed var(--warn);color:var(--warn)}
+.coin{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ktag{white-space:nowrap}
+.tagline{display:block;margin-top:4px;line-height:1}
+.tagline .ktag{margin-left:0}
+.coin small{display:block;color:var(--muted);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nums{font-family:var(--mono);font-size:.8rem;text-align:right;font-variant-numeric:tabular-nums;line-height:1.5}
+.up{color:var(--up)} .down{color:var(--down)}
+.score{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.chip{font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.c-good{background:color-mix(in srgb,var(--up) 18%,transparent);color:var(--up)}
+.c-mid{background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}
+.c-warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.c-bad{background:color-mix(in srgb,var(--down) 18%,transparent);color:var(--down)}
+.meter{width:100%;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent)}
+.row.fav{grid-template-columns:28px minmax(0,1fr) 76px auto 170px}
+.score.both{gap:7px;width:100%}
+.duo{display:grid;grid-template-columns:38px 1fr 40px;align-items:center;gap:6px;width:100%}
+.duo .chip{text-align:center;font-family:var(--mono);padding:3px 0}
+.sn{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.state{padding:28px 16px;text-align:center;color:var(--muted)}
+footer{padding-block:18px 28px;font-size:.78rem;color:var(--muted);line-height:1.5}
+/* fiche */
+.sheet{position:fixed;inset:auto 0 0 0;z-index:20;background:var(--panel);border-top:1px solid var(--line);border-radius:16px 16px 0 0;max-height:88%;overflow:auto;box-shadow:0 -10px 30px rgba(0,0,0,.25);padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.sheet .wrap{padding-block:16px;display:flex;flex-direction:column;gap:12px}
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:15}
+.sh-top{display:flex;align-items:center;gap:10px}
+.sh-top h2{margin:0;font-size:1.25rem;flex:1}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kv{border:1px solid var(--line);border-radius:8px;padding:8px}
+.kv span{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kv b{font-family:var(--mono);font-size:.92rem;font-variant-numeric:tabular-nums}
+canvas{width:100%;height:140px;display:block}
+.chartbox{display:flex;flex-direction:column;gap:8px}
+.chart-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.per{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.per button{background:transparent;color:var(--muted);padding:6px 12px;border-radius:0;font-weight:600;font-size:.82rem}
+.per button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+#chartInfo{font-size:.78rem}
+#spark{height:190px;touch-action:pan-y;cursor:crosshair}
+.tabs{overflow-x:auto;scrollbar-width:none}
+.tabs button{white-space:nowrap}
+.pane{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card.state{padding:24px 16px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.kpis.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.sizer{border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--panel));border-radius:10px;padding:10px 12px;font-size:.86rem;line-height:1.45;color:var(--ink)}
+.sizer p{margin:4px 0 0;color:var(--muted)}
+.sizer p b{color:var(--ink)}
+.sizer .btn{padding:4px 10px;font-size:.78rem;margin-left:6px}
+.sizer .row-in{display:flex;gap:6px;align-items:center;margin-top:6px}
+.sizer .row-in input{flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.sizer .row-in .btn{margin:0}
+.warn-t{color:var(--warn);font-size:.8rem}
+.form.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){ .form.two{grid-template-columns:1fr} }
+.quick{display:flex;gap:6px;flex-wrap:wrap}
+.quick .btn{flex:1;padding:8px 6px;font-size:.82rem;white-space:nowrap}
+.btn.sell{background:var(--down);color:#fff}
+.favact{display:flex;align-items:center;gap:8px;padding:0 12px 11px 50px;border-bottom:1px solid var(--line)}
+.favact{flex-wrap:wrap}
+.favact .held{flex:1 1 100%;min-width:0;font-size:.82rem;color:var(--muted);line-height:1.4}
+.favact .held b{color:var(--ink);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.favact .held b.up{color:var(--up)} .favact .held b.down{color:var(--down)}
+.favact .btn{flex:1}
+.favact .btn{padding:6px 14px;font-size:.8rem}
+.favact .b-buy{background:var(--up);color:#fff}
+.favact .b-sell{background:transparent;color:var(--down);border:1px solid var(--down)}
+.favact .b-sell:disabled{opacity:.35;cursor:default}
+.row.fav{border-bottom:0}
+.tops.seg{align-self:flex-start}
+.kpis.two-k{grid-template-columns:repeat(2,minmax(0,1fr))}
+.kpi{display:flex;flex-direction:column;gap:3px;min-width:0}
+.kpi span{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kpi b{font-family:var(--mono);font-size:1.15rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi small{font-size:.78rem;color:var(--muted);line-height:1.35}
+.kpi small.up{color:var(--up)} .kpi small.down{color:var(--down)}
+.alloc{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;background:var(--line)}
+.alloc i{display:block;min-width:3px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;font-family:var(--mono)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.pos-top{display:flex;align-items:center;gap:10px}
+.pos-top .coin{flex:1;min-width:0}
+.pos-val{display:flex;flex-direction:column;align-items:flex-end;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.8rem;gap:2px;white-space:nowrap}
+.pos-val b{font-size:.98rem}
+.plan{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.plan-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.track{position:relative;height:10px;border-radius:5px;display:flex;overflow:visible}
+.track .t-sl{flex:1;background:linear-gradient(90deg,color-mix(in srgb,var(--down) 55%,transparent),color-mix(in srgb,var(--muted) 25%,transparent));border-radius:5px 0 0 5px}
+.track .t-tp{flex:1;background:linear-gradient(90deg,color-mix(in srgb,var(--muted) 25%,transparent),color-mix(in srgb,var(--up) 55%,transparent));border-radius:0 5px 5px 0}
+.track i{position:absolute;top:-4px;width:4px;height:18px;margin-left:-2px;border-radius:2px;background:var(--ink)}
+.plan-lab{display:flex;justify-content:space-between;gap:8px;font-size:.72rem;flex-wrap:wrap}
+.plan-msg{font-size:.86rem;line-height:1.45;margin:0}
+details summary{cursor:pointer;padding-block:4px}
+.plan-edit{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:.85rem}
+.plan-edit label{display:flex;align-items:center;gap:4px}
+.buy{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.82rem;font-family:var(--mono);padding-block:4px;border-top:1px dashed var(--line);flex-wrap:wrap}
+.buy .btn{padding:4px 9px;font-size:.75rem}
+.form{display:flex;flex-direction:column;gap:12px}
+.form label{display:flex;flex-direction:column;gap:5px;font-size:.82rem;color:var(--muted);min-width:0}
+.form input,.form select{padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:.95rem;width:100%}
+.ct{margin:0;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tbl{overflow-x:auto}
+.tbl table{border-collapse:collapse;width:100%;font-size:.82rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl th{text-align:left;font-weight:600;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:7px 8px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+.tbl td.up{color:var(--up)} .tbl td.down{color:var(--down)}
+@media (max-width:560px){ .kpis,.kpis.four{grid-template-columns:repeat(2,minmax(0,1fr))} .favact{padding-left:12px} }
+.about{margin:0;font-size:.95rem;line-height:1.55;max-width:68ch;padding-left:12px;border-left:3px solid var(--accent)}
+.reasons{margin:0;padding-left:18px;line-height:1.55}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.box{border:1px solid var(--line);border-radius:10px;padding:10px}
+.box h3{margin:0 0 6px;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions .btn.ghost{color:var(--ink)}
+textarea{width:100%;min-height:150px;font-family:var(--mono);font-size:.8rem;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--head);color:var(--head-ink);padding:9px 14px;border-radius:8px;font-size:.85rem;z-index:30}
+@media (max-width:560px){
+  .row{grid-template-columns:22px minmax(0,1fr) 58px 92px;gap:8px}
+  .row.fav{grid-template-columns:18px minmax(0,1fr) 52px 112px;gap:8px;padding-inline:10px}
+  .row.fav canvas.mini{width:52px}
+  .row.fav .duo{grid-template-columns:30px minmax(0,1fr) 30px;gap:5px}
+  .row.fav .duo .sn{font-size:.68rem}
+  .row.fav .duo .chip{font-size:.66rem}
+  .name{gap:8px}
+  .logo{width:30px}
+  .ico{width:28px;height:28px}
+  canvas.mini{width:58px;height:26px}
+  canvas.btcmini{width:84px;height:26px}
+  header{position:relative;top:0}
+  .top{flex-wrap:wrap;row-gap:10px}
+  .top h1{flex:none}
+  .stamp{flex:1;min-width:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btns{flex-basis:100%;flex-wrap:nowrap;gap:6px}
+  .btns .btn{flex:1;padding:8px 4px;font-size:.8rem;white-space:nowrap;text-align:center}
+  .nums{display:none}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:no-preference){.meter i{transition:width .4s}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Radar <span>Borg</span></h1>
+      <div class="stamp" id="stamp">Chargement…</div>
+      <div class="btns">
+      <button class="btn ghost" id="btnCur" type="button" aria-label="Changer de devise"></button>
+      <button class="btn ghost" id="btnSettings" type="button">Mes ajouts</button>
+      <button class="btn ghost" id="btnAlerts" type="button">Alertes</button>
+      <button class="btn" id="btnRefresh" type="button">Actualiser</button>
+      </div>
+    </div>
+    <div class="market">
+      <div class="btc" id="btc"><span class="sn">Bitcoin : chargement…</span></div>
+      <div class="btc senti" id="senti"><span class="sn">Sentiment : chargement…</span></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-radar" aria-selected="true" type="button">Radar</button>
+      <button role="tab" id="tab-fav" aria-selected="false" type="button">Favoris ★</button>
+      <button role="tab" id="tab-pf" aria-selected="false" type="button">Portefeuille</button>
+      <button role="tab" id="tab-bilan" aria-selected="false" type="button">Bilan</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="bar">
+    <button type="button" class="switch" id="hz" role="switch" aria-checked="false" aria-label="Passer du court terme au long terme"><span class="s-l">Court terme</span><i aria-hidden="true"></i><span class="s-r">Long terme</span></button>
+    <input id="q" type="search" placeholder="Chercher BTC, Solana…" autocomplete="off">
+    <div class="tops" id="topf" role="group" aria-label="Filtrer par classement">
+      <button type="button" data-top="10">Top 10</button>
+      <button type="button" data-top="100">Top 100</button>
+    </div>
+    <span class="sn" id="count"></span>
+  </div>
+  <div class="alertbar" id="alertBar" hidden></div>
+  <p class="hint" id="hint"></p>
+  <div class="list" id="list"><div class="state">Récupération des cours…</div></div>
+  <div class="pane" id="pane" hidden></div>
+  <footer>
+    Uniquement les cryptos disponibles sur SwissBorg (liste officielle relevée le 27/10/2026, stablecoins exclus). Cours : CoinGecko (en euros ou en dollars selon ton choix), actualisés toutes les 5 minutes. Les scores sont des indicateurs techniques calculés sur le prix passé : ils repèrent des situations intéressantes à étudier, pas des achats sûrs. Les cryptos restent très volatiles, n'investis que ce que tu peux te permettre de perdre.
+  </footer>
+</main>
+
+<div class="veil" id="veil" hidden></div>
+<section class="sheet" id="sheet" hidden aria-modal="true" role="dialog"><div class="wrap" id="sheetBody"></div></section>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- Liste des cryptos (identifiants CoinGecko) ---------- */
+const DEFAULT_IDS = ["bitcoin", "ethereum", "solana", "ripple", "binancecoin", "cardano", "dogecoin", "avalanche-2", "polkadot", "chainlink", "polygon-ecosystem-token", "uniswap", "litecoin", "cosmos", "near", "aave", "stellar", "algorand", "hedera-hashgraph", "internet-computer", "filecoin", "aptos", "arbitrum", "optimism", "sui", "injective-protocol", "render-token", "the-open-network", "tron", "shiba-inu", "pepe", "hyperliquid", "swissborg", "tezos", "the-graph", "the-sandbox", "decentraland", "axie-infinity", "curve-dao-token", "lido-dao", "bittensor", "sei-network", "celestia", "jupiter-exchange-solana", "dogwifcoin", "bonk", "ondo-finance", "ethena", "pyth-network", "immutable-x", "quant-network", "kaspa", "bitcoin-cash", "ethereum-classic"];
+/* ---------- Cryptos disponibles sur SwissBorg (page officielle « supported assets », relevé du 27/10/2026, sans les stablecoins) ---------- */
+const SB_DATE = "27/10/2026";
+const SB = new Set(["BTC", "ETH", "BNB", "XRP", "SOL", "BORG", "TRX", "ZEC", "HYPE", "DOGE", "WBTC", "LINK", "ADA", "NEAR", "XLM", "BCH", "UNI", "LTC", "CC", "AVAX", "SUI", "GRAM", "HBAR", "TAO", "QNT", "SHIB", "ENA", "M", "AAVE", "ONDO", "PUMP", "PEPE", "PAXG", "ASTER", "MNT", "DOT", "WLFI", "WLD", "SKY", "MORPHO", "ICP", "VVV", "ETC", "ARB", "KAS", "POL", "ALGO", "JUP", "ATOM", "RENDER", "INJ", "LIT", "FIL", "CAKE", "ZRO", "ETHFI", "NIGHT", "APT", "AERO", "PYTH", "FLR", "CRV", "TIA", "GRASS", "RAY", "PENGU", "TRUMP", "STABLE", "FET", "VIRTUAL", "DRV", "SPX", "SEI", "XPL", "STRK", "PENDLE", "FF", "LDO", "XTZ", "GNO", "BONK", "CARDS", "OP", "MON", "GRT", "KMNO", "JTO", "FLOKI", "BAT", "ENS", "COMP", "ZBCN", "JASMY", "SYRUP", "AKT", "EIGEN", "ZAMA", "FLUID", "S", "WIF", "MET", "BEAM", "AXS", "PONS", "SENT", "TRAC", "USELESS", "XCN", "MANA", "2Z", "VSN", "SAND", "CHZ", "NPC", "FARTCOIN", "AWE", "IMX", "AIOZ", "1INCH", "0G", "APE", "SUPER", "ATH", "SNX", "GEOD", "META", "PLUME", "STONK", "SOSO", "SKR", "ORCA", "RSR", "DBR", "CASHCAT", "DYDX", "ZRX", "PEAQ", "GMX", "GALA", "W", "RED", "MELANIA", "ORE", "HNT", "YFI", "KAVA", "LPT", "KSM", "COW", "NMR", "BABY", "ZETA", "BABYDOGE", "IO", "SPK", "LINEA", "KAITO", "PURR", "RE", "SUSHI", "DEXE", "ACU", "ASTR", "MEGA", "BERA", "AB", "ENJ", "ARC", "JELLYJELLY", "TRB", "ALEO", "ALT", "BIO", "NIL", "ALLO", "HUMA", "COAI", "ICNT", "RLC", "BOME", "NOS", "OSMO", "POPCAT", "CFG", "PNUT", "ANKR", "MASK", "AVNT", "SYN", "MOG", "RAVE", "KTA", "MEW", "ALCH", "MOODENG", "API3", "ME", "NOT", "PROVE", "SKYAI", "RPL", "UMA", "MOVE", "EUL", "XPIN", "POWR", "AUKI", "AT", "SIGN", "REKT", "NEET", "ZEREBRO", "BNT", "ZORA", "MMT", "NEIRO", "FLUX", "TAKE", "ANSEM", "CARV", "ILV", "EV", "KNC", "MANTRA", "EDEN", "SKL", "CLOUD", "MPLX", "EDEL", "EDGE", "TNSR", "BANK", "YGG", "BLUR", "GMT", "ON", "BMT", "GTC", "AUDIO", "LQTY", "WOO", "XDP", "ELSA", "DOGS", "YB", "WCT", "TAIKO", "GIGA", "MIRA", "PUFFER", "PUMPCADE", "FOLD", "CRED", "FAI", "PIPPIN", "ORDER", "BLESS", "KLED", "QI", "BOB", "MYX", "VNX", "GOAT", "STG", "STONKBROKER", "BITCOIN", "GP", "KERNEL", "JOE", "SAPIEN", "CLANKER", "MNDE", "GRIFFAIN", "LAYER", "ENSO", "ROBO", "SLX", "44", "HONEY", "WET", "NATIX", "BERT", "LRC", "BLUAI", "IN", "PONKE", "DRIFT", "CHILLGUY", "DGLD", "WELL", "TRUST", "GLMR", "WECAN", "ACT", "GUN", "FIGHT", "COQ", "VINE", "AVA", "CODEC", "IMO", "PAYAI", "SOLO", "HMM", "TREE", "UMBRA", "VNXAU", "XBG", "PRCL", "INDEX", "ZEUS", "FWOG", "FHE", "OOB", "ARENA", "SHDW", "WEN", "APU", "LMTS", "PIXEL", "AVICI", "DREAMS", "TENDIES", "GHST", "FUN", "REN", "NOMU", "OMFG", "WINGS", "PRDT", "BORGY", "AURY", "BID", "NEON", "PHAR", "ZFI", "MLC", "MYRO", "LASO", "USA", "SWEAT", "RETARDIO", "SIGMA", "LOCKIN", "MAGA", "BLACK", "CLR", "PLAYSOLANA", "KET", "CROWN", "MINI", "CHATOSHI", "TUNA", "MF", "AVO", "BUTTHOLE", "BREW", "BILLY", "SCF", "KINS", "SUZ", "TREMP", "ROBA", "ALVA", "URANUS", "BLOCK", "HARAMBE", "MOTHER", "WXM", "CHONKY", "KYROS", "SELFIE", "HAMMY", "LOOK", "YNE", "KIMBO", "ZARA", "MUMU", "PCULE", "SNAI", "BULLY", "VISTA", "TADA", "MOE", "NUIT", "AIDD", "TAI", "CT", "AMBIOS", "GNET", "MXNA", "AGA", "CLY", "TON"]);
+function onSB(c){ return SB.has((c.symbol||"").toUpperCase()); }
+
+
+const store = {
+  get(k,d){try{const v=localStorage.getItem("rb_"+k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem("rb_"+k,JSON.stringify(v))}catch(e){}}
+};
+let ids = store.get("ids", DEFAULT_IDS);
+let favs = new Set(store.get("favs", []));
+let tab = store.get("tab","court");
+if(!["court","long","fav","pf","bilan"].includes(tab)) tab = "court";
+let cur = store.get("cur","eur");
+let topN = store.get("top",100);
+if(topN!==10 && topN!==100) topN = 100;
+let coins = [];
+let lastOk = null;
+
+/* ---------- Outils ---------- */
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const pct = v => v==null||isNaN(v) ? "—" : (v>0?"+":"")+v.toFixed(1)+" %";
+const cls = v => v==null?"":(v>=0?"up":"down");
+function eur(v){ if(v==null) return "—";
+  const sym = cur==="usd" ? " $" : " €";
+  const d = v>=100?0 : v>=1?2 : v>=0.01?4 : 8;
+  return v.toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d})+sym; }
+function big(v){ const s=cur==="usd"?"$":"€"; if(!v) return "—"; if(v>=1e9) return (v/1e9).toFixed(1).replace(".",",")+" Md"+s; if(v>=1e6) return (v/1e6).toFixed(0)+" M"+s; return Math.round(v)+" "+s; }
+function icon(c,size=""){
+  const letter = (c.symbol||"?").slice(0,3).toUpperCase();
+  if(!c.image) return `<span class="ico ${size}">${letter}</span>`;
+  return `<img class="ico ${size}" src="${c.image}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;ico ${size}&quot;>${letter}</span>'">`;
+}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
+
+function rsi(closes,n=14){
+  if(closes.length<n+1) return null;
+  let g=0,l=0;
+  for(let i=closes.length-n;i<closes.length;i++){const d=closes[i]-closes[i-1]; if(d>0) g+=d; else l-=d;}
+  if(l===0) return 100; const rs=(g/n)/(l/n); return 100-100/(1+rs);
+}
+
+/* ---------- Analyse ---------- */
+function analyse(c){
+  const sp = (c.sparkline_in_7d && c.sparkline_in_7d.price) || [];
+  const p = c.current_price;
+  const ch7 = c.price_change_percentage_7d_in_currency, ch30 = c.price_change_percentage_30d_in_currency,
+        ch1y = c.price_change_percentage_1y_in_currency, ch24 = c.price_change_percentage_24h_in_currency;
+  const ma = sp.length ? sp.reduce((a,b)=>a+b,0)/sp.length : p;
+  const vsMa = (p/ma-1)*100;
+  const four = sp.filter((_,i)=>i%4===0); four.push(p);
+  const r = rsi(four);
+  const rets=[]; for(let i=1;i<sp.length;i++) rets.push(sp[i]/sp[i-1]-1);
+  const m = rets.reduce((a,b)=>a+b,0)/(rets.length||1);
+  const vol = Math.sqrt(rets.reduce((a,b)=>a+(b-m)**2,0)/(rets.length||1))*Math.sqrt(24)*100; // volatilité journalière %
+  const volRatio = c.total_volume && c.market_cap ? c.total_volume/c.market_cap : 0;
+  const dd = c.ath_change_percentage;
+
+  // ----- Court terme (1 semaine à 1 mois) -----
+  let s = 50; const rs = [];
+  const ch14 = c.price_change_percentage_14d_in_currency;
+  // Élan lissé : 7, 14 et 30 jours mélangés, pour éviter qu'une seule journée fasse tout basculer
+  const mom = 0.25*(ch7??0) + 0.35*(ch14??ch7??0) + 0.4*(ch30??0);
+  s += clamp(mom,-20,20);
+  if(mom>3) rs.push("Élan haussier sur 1 semaine à 1 mois (moyenne pondérée "+pct(mom)+")");
+  else if(mom<-3) rs.push("Élan baissier sur 1 semaine à 1 mois (moyenne pondérée "+pct(mom)+")");
+  // Tendance de fond : moyennes mobiles 20 et 50 jours quand l'historique est chargé
+  const h = histFor(c.id); let ma20=null, ma50=null;
+  if(h && h.length>=50){
+    const avg = a => a.reduce((x,y)=>x+y,0)/a.length;
+    ma20 = avg(h.slice(-20)); ma50 = avg(h.slice(-50));
+    if(p>ma20){ s+=5; rs.push("Prix au-dessus de sa moyenne 20 jours"); } else { s-=5; rs.push("Prix sous sa moyenne 20 jours"); }
+    if(ma20>ma50){ s+=8; rs.push("Moyenne 20 j au-dessus de la moyenne 50 j : tendance de fond haussière"); }
+    else { s-=8; rs.push("Moyenne 20 j sous la moyenne 50 j : tendance de fond baissière"); }
+  } else {
+    s += clamp(vsMa,-10,10)*1.0;
+    if(vsMa>2) rs.push("Prix au-dessus de sa moyenne des 7 derniers jours");
+    if(vsMa<-2) rs.push("Prix sous sa moyenne des 7 derniers jours");
+  }
+  if(r!=null && r>72){ s-=15; rs.push("Surchauffe (RSI "+r.toFixed(0)+") : risque de repli après une forte montée"); }
+  if(r!=null && r<32 && (ch30??0)>0){ s+=6; rs.push("Petit repli dans une tendance haussière (RSI "+r.toFixed(0)+") : point d'entrée possible"); }
+  else if(r!=null && r<30) rs.push("Fortement survendu (RSI "+r.toFixed(0)+") : rebond possible mais tendance négative");
+  if(volRatio>0.12){ s+=5; rs.push("Beaucoup d'échanges par rapport à sa taille : fort intérêt du marché"); }
+  if(volRatio<0.01){ s-=5; rs.push("Peu d'échanges : prix moins fiable"); }
+  if((ch7??0)>40){ s-=10; rs.push("+"+ch7.toFixed(0)+" % en 7 jours : arriver maintenant est risqué"); }
+  const court = Math.round(clamp(s,0,100));
+
+  // ----- Long terme (plusieurs mois) -----
+  let L = 50; const rl = [];
+  if(dd!=null){
+    if(dd<=-40 && dd>=-85){ L+=15; rl.push("À "+Math.abs(dd).toFixed(0)+" % sous son record : marge de remontée si le projet tient"); }
+    else if(dd<-85){ L-=5; rl.push("Effondrée de "+Math.abs(dd).toFixed(0)+" % depuis son record : projet à vérifier"); }
+    else if(dd>-12){ L-=5; rl.push("Proche de son plus haut historique : achat cher à long terme"); }
+  }
+  if(ch1y!=null){ L+=clamp(ch1y,-50,100)*0.12; rl.push((ch1y>=0?"En hausse":"En baisse")+" de "+Math.abs(ch1y).toFixed(0)+" % sur 1 an"); }
+  const rk = c.market_cap_rank||999;
+  if(rk<=10){ L+=15; rl.push("Top 10 : projet établi, risque plus faible"); }
+  else if(rk<=30){ L+=8; rl.push("Top 30 : projet solide"); }
+  else if(rk>100){ L-=8; rl.push("Hors top 100 : plus spéculatif"); }
+  if((ch30??0)<-30){ L-=10; rl.push("Chute en cours ("+ch30.toFixed(0)+" % sur 30 j) : attendre une stabilisation"); }
+  if(vsMa>0 && (ch30??0)<0){ L+=5; rl.push("Commence à se stabiliser cette semaine"); }
+  const long = Math.round(clamp(L,0,100));
+
+  const risk = rk<=10 && vol<4 ? "Modéré" : (rk>60 || vol>7) ? "Élevé" : "Moyen";
+  return {court, rs, long, rl, ma20, ma50, mom, rsi:r, vol, vsMa, risk, ch7, ch30, ch1y, ch24, dd, sp};
+}
+
+function label(score, a, mode){
+  if(mode==="court"){
+    if(a.rsi!=null && a.rsi>72) return ["Surchauffe","c-warn"];
+    if(score>=70) return a.blocked ? ["À surveiller","c-mid"] : ["Opportunité","c-good"];
+    if(score>=55) return ["À surveiller","c-mid"];
+    if(score<35) return ["À éviter","c-bad"];
+    return ["Neutre","c-mid"];
+  }
+  if(score>=70) return ["Bon potentiel","c-good"];
+  if(score>=55) return ["Intéressant","c-mid"];
+  if(score<35) return ["Risqué","c-bad"];
+  return ["Neutre","c-mid"];
+}
+
+
+/* ---------- Historique quotidien (moyennes 20 / 50 jours), chargé doucement en arrière-plan ---------- */
+let HIST = store.get("hist_"+cur, {});
+const HIST_TTL = 12*3600e3;
+let histBusy = false, lastAll = null, histDone = 0, histTotal = 0;
+function histFor(id){ const h=HIST[id]; return h && Date.now()-h.t < HIST_TTL ? h.p : null; }
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+async function pumpHist(){
+  if(histBusy) return; histBusy = true;
+  const myCur = cur;
+  const queue = ["bitcoin", ...coins.map(c=>c.id).filter(id=>id!=="bitcoin")].filter(id=>!histFor(id));
+  histTotal = queue.length; histDone = 0;
+  for(let i=0;i<queue.length;i++){
+    if(cur!==myCur) break;
+    try{
+      const r = await fetch("https://api.coingecko.com/api/v3/coins/"+encodeURIComponent(queue[i])+"/market_chart?vs_currency="+cur+"&days=60&interval=daily");
+      if(r.status===429){ await sleep(60000); i--; continue; }
+      if(r.ok){ const j=await r.json(); const pts=(j.prices||[]).map(x=>x[1]); if(pts.length){ HIST[queue[i]]={t:Date.now(), p:pts}; store.set("hist_"+cur, HIST); } }
+    }catch(e){}
+    histDone++;
+    if(lastAll && (histDone%8===0 || histDone===queue.length || queue[i]==="bitcoin")){ build(lastAll); if(tab!=="pf" && tab!=="bilan") render(); }
+    await sleep(2600);
+  }
+  histBusy = false;
+  if(histDone && coins.length){ trackSignals(); checkAlerts(); }
+}
+
+/* ---------- Filtre de marché : n'acheter que quand le marché est porteur ---------- */
+let regime = null; // "up" | "mid" | "down"
+function computeRegime(){
+  if(!btc) return null;
+  const a=btc.a;
+  if(a.ma20!=null && a.ma50!=null){
+    const p=btc.current_price;
+    if(p>a.ma50 && a.ma20>a.ma50) return "up";
+    if(p<a.ma50 && a.ma20<a.ma50) return "down";
+    return "mid";
+  }
+  if((a.ch30??0)>5 && (a.ch7??0)>0) return "up";
+  if((a.ch30??0)<-5 && (a.ch7??0)<0) return "down";
+  return "mid";
+}
+
+/* ---------- Performance face à Bitcoin ---------- */
+let btc = null, beatShare = null;
+// Écart de performance avec Bitcoin, en points de % : (1+crypto)/(1+BTC)-1
+function rel(ch, bch){ return ch==null||bch==null ? null : ((1+ch/100)/(1+bch/100)-1)*100; }
+function relTag(r){
+  if(r==null) return "";
+  const v = Math.abs(r).toFixed(1).replace(".",",");
+  const [t,k] = r>=2 ? ["Bat BTC +"+v+" %","k-hi"] : r<=-2 ? ["Sous BTC −"+v+" %","k-inv"] : ["Comme BTC","k-lo"];
+  return `<span class="ktag ${k}" title="Performance sur 7 jours comparée à Bitcoin">${t}</span>`;
+}
+function relText(r, per){
+  if(r==null) return "";
+  const v=Math.abs(r).toFixed(1).replace(".",",");
+  return r>=2 ? `a fait ${v} % de mieux que Bitcoin sur ${per}` : r<=-2 ? `a fait ${v} % de moins bien que Bitcoin sur ${per}` : `a fait à peu près comme Bitcoin sur ${per}`;
+}
+function build(all){
+  const seen = new Set(); all = all.filter(c=>c && !seen.has(c.id) && seen.add(c.id)); // pas de doublons
+  lastAll = all;
+  const b = all.find(c=>c.id==="bitcoin");
+  btc = b ? {...b, a:analyse(b)} : null;
+  regime = computeRegime();
+  const keep = new Set(keepIds());
+  coins = all.filter(c=>onSB(c) && (keep.has(c.id) || ((c.market_cap_rank||999)<=100 && !SKIP.test(c.name+" "+c.symbol)))).map(c=>{
+    const a = analyse(c);
+    if(btc && c.id!=="bitcoin"){
+      a.rel7 = rel(a.ch7, btc.a.ch7); a.rel30 = rel(a.ch30, btc.a.ch30);
+      if(a.rel7!=null && a.rel7>=5){ a.court=Math.min(100,a.court+5); a.rs.push("Fait mieux que Bitcoin cette semaine (+"+a.rel7.toFixed(1).replace(".",",")+" %) : elle mène le mouvement"); }
+      else if(a.rel7!=null && a.rel7<=-5){ a.court=Math.max(0,a.court-5); a.rs.push("Fait moins bien que Bitcoin cette semaine (−"+Math.abs(a.rel7).toFixed(1).replace(".",",")+" %) : elle traîne"); }
+    }
+    if(regime==="down" && c.id!=="bitcoin"){
+      a.court = Math.max(0, a.court-10); a.blocked = true;
+      a.rs.unshift("Marché défavorable : Bitcoin est en tendance baissière, les signaux d'achat court terme sont mis en attente");
+    }
+    return {...c, a};
+  });
+  const rs = coins.filter(c=>c.a.rel7!=null);
+  beatShare = rs.length ? Math.round(100*rs.filter(c=>c.a.rel7>0).length/rs.length) : null;
+  renderBtc();
+  renderSenti();
+}
+function renderBtc(){
+  const el=$("#btc"); if(!btc){ el.innerHTML='<span class="sn">Bitcoin indisponible</span>'; return; }
+  const a=btc.a; const [lab,lc]=label(a.court,a,"court");
+  const mood = beatShare==null ? "" :
+    beatShare>=60 ? beatShare+" % des cryptos font mieux que Bitcoin cette semaine : les autres cryptos ont la main."
+    : beatShare<=40 ? "Seulement "+beatShare+" % des cryptos font mieux que Bitcoin cette semaine : Bitcoin domine le marché."
+    : beatShare+" % des cryptos font mieux que Bitcoin cette semaine : pas de camp dominant.";
+  el.innerHTML = `${icon(btc)}<b>Bitcoin</b><span class="v">${eur(btc.current_price)}</span><canvas class="mini btcmini" data-c="bitcoin" aria-label="Prix du Bitcoin sur 7 jours"></canvas>
+    <span class="v ${cls(a.ch24)}">24h ${pct(a.ch24)}</span><span class="v ${cls(a.ch7)}">7j ${pct(a.ch7)}</span><span class="v ${cls(a.ch30)}">30j ${pct(a.ch30)}</span>
+    <span class="chip ${lc}">${lab}</span>${regime?`<span class="chip ${regime==="up"?"c-good":regime==="down"?"c-bad":"c-mid"}">Marché ${regime==="up"?"porteur":regime==="down"?"défavorable":"neutre"}</span>`:""}<span class="mood">${mood}</span>
+    ${regime?`<span class="mood">${regime==="up"?"Bitcoin est au-dessus de ses moyennes 20 et 50 jours : le marché est porteur, les signaux d'achat sont valables."
+      : regime==="down"?"Bitcoin est sous ses moyennes 20 et 50 jours : le marché baisse, les signaux d'achat court terme sont mis en attente."
+      :"Bitcoin hésite autour de ses moyennes : signaux d'achat valables, mais prudence sur les montants."}${a.ma50==null?" (estimation en attendant l'historique)":""}</span>`:""}`;
+  drawMini(el.querySelector(".btcmini"), btc);
+}
+
+
+/* ---------- Alertes ---------- */
+const AL = store.get("alerts", null) || {rules:[], opts:{favSignal:true, btcDrop:true, btcDropPct:3}, prev:{}, state:{}, log:[]};
+AL.rules = []; // alertes de prix retirées
+AL.opts = Object.assign({favSignal:true, btcDrop:true, btcDropPct:3}, AL.opts||{});
+function saveAL(){ store.set("alerts", AL); }
+let audioCtx = null;
+document.addEventListener("pointerdown", ()=>{ try{ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==="suspended") audioCtx.resume(); }catch(e){} }, {once:false});
+function beep(){
+  try{ if(!audioCtx) return; const t=audioCtx.currentTime;
+    [0,0.22].forEach(d=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.frequency.value=880; o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001,t+d); g.gain.exponentialRampToValueAtTime(0.25,t+d+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+d+0.18); o.start(t+d); o.stop(t+d+0.2); });
+  }catch(e){}
+}
+function fire(list){
+  if(!list.length) return;
+  const now=Date.now();
+  list.forEach(m=>AL.log.unshift({t:now, msg:m.msg, lvl:m.lvl, read:false}));
+  AL.log = AL.log.slice(0,40); saveAL();
+  try{ navigator.vibrate && navigator.vibrate([250,120,250]); }catch(e){}
+  beep();
+  try{ if(window.Notification && Notification.permission==="granted") new Notification("Radar Borg", {body: list.map(m=>m.msg).join("\n")}); }catch(e){}
+  renderAlertBar();
+}
+function cond(on, key){ const was = !!AL.state[key]; AL.state[key] = !!on; return on && !was; }
+function checkAlerts(){
+  if(!coins.length) return;
+  const out=[];
+  // Chute de Bitcoin
+  if(AL.opts.btcDrop && btc){
+    const v = btc.a.ch24 ?? 0;
+    if(cond(v<=-AL.opts.btcDropPct,"btc")) out.push({msg:`Bitcoin chute de ${Math.abs(v).toFixed(1)} % sur 24 h : les cryptos qui le suivent risquent de baisser aussi`, lvl:"bad"});
+  }
+  planAlerts(out);
+  // Changement de signal des favoris
+  coins.filter(c=>favs.has(c.id) && c.a.ma50!=null).forEach(c=>{
+    const [lab] = label(c.a.court,c.a,"court"); const before = AL.prev[c.id];
+    if(AL.opts.favSignal && before && before!==lab){
+      out.push({msg:`${c.symbol.toUpperCase()} (favori) : signal court terme ${before} → ${lab}`, lvl: lab==="Opportunité"?"good":(lab==="À éviter"||lab==="Surchauffe")?"bad":"mid"});
+    }
+    AL.prev[c.id]=lab;
+  });
+  saveAL();
+  fire(out);
+}
+function unread(){ return AL.log.filter(l=>!l.read); }
+function renderAlertBar(){
+  const u = unread(); const bar=$("#alertBar");
+  $("#btnAlerts").textContent = "Alertes" + (u.length? " ("+u.length+")" : "");
+  document.title = (u.length? "("+u.length+") " : "") + "Radar Borg";
+  if(!u.length){ bar.hidden=true; return; }
+  bar.hidden=false;
+  bar.innerHTML = `<div class="ab-head"><b>${u.length} alerte${u.length>1?"s":""}</b><button class="btn" type="button" id="abOk">J'ai vu</button></div>` +
+    u.slice(0,6).map(l=>`<div class="ab-row ab-${l.lvl}"><span class="sn">${new Date(l.t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</span><span>${l.msg}</span></div>`).join("");
+  $("#abOk").onclick=()=>{ AL.log.forEach(l=>l.read=true); saveAL(); renderAlertBar(); };
+}
+let wakeLock=null;
+async function toggleWake(btn){
+  try{
+    if(wakeLock){ await wakeLock.release(); wakeLock=null; btn.textContent="Garder l'écran allumé"; return; }
+    wakeLock = await navigator.wakeLock.request("screen"); btn.textContent="Écran gardé allumé ✓";
+    wakeLock.addEventListener("release",()=>{ wakeLock=null; });
+  }catch(e){ toast("Ton navigateur ne permet pas de garder l'écran allumé"); }
+}
+function openAlerts(){
+  $("#sheetBody").innerHTML = `
+    <div class="sh-top"><h2>Alertes</h2><button class="btn ghost" type="button" id="close" style="color:var(--ink)">Fermer</button></div>
+    <p class="hint">Les alertes fonctionnent quand Radar Borg est ouvert : la page vérifie les cours toutes les 5 minutes, puis affiche un bandeau, fait vibrer le téléphone et émet un bip. Laisse la page ouverte, par exemple avec l'écran allumé.</p>
+    <div class="box"><h3>Alertes automatiques</h3>
+      <label class="chk"><input type="checkbox" id="oFav" ${AL.opts.favSignal?"checked":""}> Quand le signal court terme d'un favori change (ex. Neutre → Opportunité)</label>
+      <label class="chk"><input type="checkbox" id="oBtc" ${AL.opts.btcDrop?"checked":""}> Quand Bitcoin chute de plus de <input type="number" id="oBtcPct" min="1" max="50" step="0.5" value="${AL.opts.btcDropPct}" class="num"> % sur 24 h</label>
+      <label class="chk"><input type="checkbox" id="oPlan" ${AL.opts.plan!==false?"checked":""}> Quand une crypto de ton portefeuille atteint son objectif ou sa limite de perte</label>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" type="button" id="aTest" style="color:var(--ink)">Tester une alerte</button>
+      <button class="btn ghost" type="button" id="aWake" style="color:var(--ink)">${wakeLock?"Écran gardé allumé ✓":"Garder l'écran allumé"}</button>
+    </div>
+    <div class="box"><h3>Historique</h3>${AL.log.length? AL.log.slice(0,20).map(l=>`<div class="ab-row ab-${l.lvl}"><span class="sn">${new Date(l.t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span><span>${l.msg}</span></div>`).join("") : '<p class="sn" style="margin:0">Aucune alerte déclenchée.</p>'}</div>`;
+  $("#veil").hidden=false; $("#sheet").hidden=false;
+  $("#close").onclick=closeSheet;
+  $("#oFav").onchange=e=>{AL.opts.favSignal=e.target.checked; saveAL();};
+  $("#oBtc").onchange=e=>{AL.opts.btcDrop=e.target.checked; saveAL();};
+  $("#oPlan").onchange=e=>{AL.opts.plan=e.target.checked; saveAL();};
+  $("#oBtcPct").onchange=e=>{const v=parseFloat(e.target.value); if(v>0){AL.opts.btcDropPct=v; delete AL.state.btc; saveAL();}};
+  $("#aTest").onclick=()=>fire([{msg:"Alerte de test : tout fonctionne", lvl:"mid"}]);
+  $("#aWake").onclick=e=>toggleWake(e.currentTarget);
+}
+
+
+/* ---------- Couleur dominante des logos ---------- */
+const KNOWN = {btc:[247,147,26],eth:[98,126,234],sol:[153,69,255],xrp:[35,41,47],bnb:[243,186,47],ada:[0,51,173],doge:[194,166,51],avax:[232,65,66],dot:[230,0,122],link:[42,90,218],pol:[130,71,229],uni:[255,0,122],ltc:[52,93,157],atom:[46,49,72],near:[0,0,0],aave:[182,80,158],xlm:[20,20,20],trx:[255,6,10],ton:[0,136,204],shib:[255,161,9],sui:[77,162,255],hype:[151,252,228],borg:[1,201,151],pepe:[72,145,51],bch:[10,193,142],etc:[50,140,60],hbar:[0,0,0],apt:[0,0,0],arb:[40,160,240],op:[255,4,32],inj:[0,242,254],render:[207,16,16],tao:[0,0,0],kas:[73,234,203],ondo:[18,52,215],fil:[0,144,255],icp:[41,171,226]};
+let colorRGB = store.get("colors", {});
+const pending = new Set();
+function hslOf([r,g,b]){ r/=255; g/=255; b/=255; const mx=Math.max(r,g,b), mn=Math.min(r,g,b); let h=0,s=0; const l=(mx+mn)/2;
+  if(mx!==mn){ const d=mx-mn; s=l>0.5?d/(2-mx-mn):d/(mx+mn); h = mx===r?((g-b)/d+(g<b?6:0)) : mx===g?((b-r)/d+2) : ((r-g)/d+4); h*=60; } return [h,s,l]; }
+function isDark(){ const t=document.documentElement.dataset.theme; return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
+function coinColor(c, dark=isDark()){
+  const rgb = colorRGB[c.id] || KNOWN[(c.symbol||"").toLowerCase()];
+  if(!rgb){ extractColor(c); let h=0; for(const ch of c.id) h=(h*31+ch.charCodeAt(0))%360; return `hsl(${h} 45% ${dark?62:45}%)`; }
+  let [h,s,l] = hslOf(rgb);
+  // Ajuste la luminosité pour rester lisible sur le fond clair ou sombre
+  l = dark ? Math.min(Math.max(l,0.55),0.75) : Math.min(Math.max(l,0.30),0.52);
+  if(s<0.12) s=0.08;
+  return `hsl(${Math.round(h)} ${Math.round(s*100)}% ${Math.round(l*100)}%)`;
+}
+function extractColor(c){
+  if(!c.image || pending.has(c.id) || colorRGB[c.id]) return; pending.add(c.id);
+  const img = new Image(); img.crossOrigin = "anonymous";
+  img.onload = ()=>{
+    try{
+      const cv=document.createElement("canvas"); cv.width=cv.height=32; const g=cv.getContext("2d");
+      g.drawImage(img,0,0,32,32); const d=g.getImageData(0,0,32,32).data;
+      const buckets={}; let all=[0,0,0,0];
+      for(let i=0;i<d.length;i+=4){ if(d[i+3]<200) continue; const px=[d[i],d[i+1],d[i+2]];
+        all[0]+=px[0]; all[1]+=px[1]; all[2]+=px[2]; all[3]++;
+        const [h,s,l]=hslOf(px); if(s<0.25||l<0.12||l>0.92) continue;
+        const k=Math.round(h/20)+"_"+Math.round(l*3); const b=buckets[k]||(buckets[k]=[0,0,0,0]);
+        b[0]+=px[0]; b[1]+=px[1]; b[2]+=px[2]; b[3]++; }
+      let best=null; for(const k in buckets) if(!best||buckets[k][3]>best[3]) best=buckets[k];
+      const src = best && best[3]>8 ? best : all;
+      if(src[3]) { colorRGB[c.id]=[0,1,2].map(i=>Math.round(src[i]/src[3])); store.set("colors",colorRGB); redrawMinis(c.id); }
+    }catch(e){ /* logo non lisible : couleur de secours */ }
+  };
+  img.src = c.image;
+}
+function downsample(sp,n){ if(sp.length<=n) return sp; const out=[]; for(let i=0;i<n;i++) out.push(sp[Math.round(i*(sp.length-1)/(n-1))]); return out; }
+function drawMini(cv, c){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight; if(!w) return;
+  cv.width=w*dpr; cv.height=h*dpr; const g=cv.getContext("2d"); g.scale(dpr,dpr);
+  const sp=downsample(c.a.sp,48); if(sp.length<2) return;
+  const min=Math.min(...sp), max=Math.max(...sp), pad=3;
+  const X=i=>pad+i*(w-2*pad)/(sp.length-1), Y=v=>pad+(max-v)/(max-min||1)*(h-2*pad);
+  const col=coinColor(c, cv.closest("header") ? true : isDark());
+  g.beginPath(); sp.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));
+  g.strokeStyle=col; g.lineWidth=1.6; g.lineJoin="round"; g.stroke();
+  g.lineTo(X(sp.length-1),h); g.lineTo(X(0),h); g.closePath();
+  g.globalAlpha=.16; g.fillStyle=col; g.fill(); g.globalAlpha=1;
+  g.beginPath(); g.arc(X(sp.length-1),Y(sp[sp.length-1]),2.4,0,7); g.fillStyle=col; g.fill();
+}
+function redrawMinis(id){
+  document.querySelectorAll("canvas.mini"+(id?'[data-c="'+id+'"]':"")).forEach(cv=>{ const c=findCoin(cv.dataset.c); if(c) drawMini(cv,c); });
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>redrawMinis());
+
+
+/* ---------- Sentiment du marché ---------- */
+let fng = store.get("fng", null);
+const FNG_FR = v => v<=24?"Peur extrême":v<=44?"Peur":v<=55?"Neutre":v<=75?"Avidité":"Avidité extrême";
+async function loadFng(){
+  try{
+    const r = await fetch("https://api.alternative.me/fng/?limit=8");
+    if(!r.ok) throw 0;
+    const j = await r.json(); const d = (j.data||[]).map(x=>+x.value);
+    if(d.length){ fng = {now:d[0], yday:d[1], week:d[7], t:Date.now()}; store.set("fng",fng); }
+  }catch(e){ /* on garde la dernière valeur connue */ }
+  renderSenti();
+}
+function renderSenti(){
+  const el=$("#senti"); if(!el) return;
+  const list = coins.filter(c=>c.a);
+  const up7 = list.length ? Math.round(100*list.filter(c=>(c.a.ch7??0)>0).length/list.length) : null;
+  const up24 = list.length ? Math.round(100*list.filter(c=>(c.a.ch24??0)>0).length/list.length) : null;
+  let html = "";
+  if(fng){
+    const v=fng.now, dy=fng.yday!=null?v-fng.yday:null, dw=fng.week!=null?v-fng.week:null;
+    const advice = v<=24 ? "Le marché a très peur : souvent une zone d'achat intéressante à long terme, mais ça peut encore baisser."
+      : v<=44 ? "Le marché est inquiet : prudence à court terme, opportunités possibles à long terme."
+      : v<=55 ? "Le marché est indécis : pas de signal fort dans un sens ou dans l'autre."
+      : v<=75 ? "Le marché est confiant : la tendance porte, mais évite d'acheter ce qui a déjà beaucoup monté."
+      : "Le marché est euphorique : risque élevé de correction, plutôt le moment de sécuriser des gains.";
+    html += `<div class="sg"><span class="sl">Sentiment</span>
+      <span class="gauge" role="img" aria-label="Indice peur et avidité ${v} sur 100"><i style="left:${v}%"></i></span>
+      <b class="v">${v}</b><b>${FNG_FR(v)}</b>
+      <span class="v sd">${dy!=null?"hier "+(dy>0?"+":"")+dy:""}${dw!=null?" · 7 j "+(dw>0?"+":"")+dw:""}</span></div>
+      <span class="mood">${advice}</span>`;
+  }
+  if(up7!=null) html += `<span class="mood">Ta liste : <b>${up7} %</b> des cryptos en hausse sur 7 jours, <b>${up24} %</b> sur 24 h.</span>`;
+  el.innerHTML = html || '<span class="sn">Sentiment : chargement…</span>';
+}
+
+
+/* ---------- Graphique de la fiche : 7 ou 30 jours ---------- */
+const chartCache = {};
+let chartDays = store.get("chartDays", 7);
+async function series(c, days){
+  if(days===7){ const t1=Date.parse(c.last_updated)||Date.now(), n=c.a.sp.length; return {p:c.a.sp, ts:c.a.sp.map((_,i)=>t1-(n-1-i)*(7*864e5/Math.max(1,n-1)))}; }
+  const k=c.id+"_"+cur+"_"+days, hit=chartCache[k];
+  if(hit && Date.now()-hit.t < 10*60*1000) return hit.s;
+  const r = await fetch("https://api.coingecko.com/api/v3/coins/"+encodeURIComponent(c.id)+"/market_chart?vs_currency="+cur+"&days="+days);
+  if(r.status===429) throw new Error("trop de demandes, réessaie dans une minute");
+  if(!r.ok) throw new Error("erreur "+r.status);
+  const j = await r.json(); const out={p:(j.prices||[]).map(x=>x[1]), ts:(j.prices||[]).map(x=>x[0])};
+  chartCache[k]={t:Date.now(),s:out}; return out;
+}
+async function showChart(c){
+  document.querySelectorAll(".per button").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.d===chartDays));
+  const info=$("#chartInfo"), cv=$("#spark"); if(!cv) return;
+  info.textContent="Chargement…";
+  const want=chartDays;
+  try{
+    const {p, ts} = await series(c, want);
+    if(want!==chartDays || !document.body.contains(cv)) return;
+    drawSpark(cv, p, c, ts);
+    if(p.length>1){
+      const hi=Math.max(...p), lo=Math.min(...p), ch=(p[p.length-1]/p[0]-1)*100;
+      info.innerHTML = `Sur ${want} jours : <b class="${cls(ch)}">${pct(ch)}</b> · plus haut ${eur(hi)} · plus bas ${eur(lo)}`;
+    } else info.textContent="Pas assez de données";
+  }catch(e){ info.textContent="Graphique indisponible ("+e.message+")"; }
+}
+
+
+/* ---------- À quoi sert chaque crypto ---------- */
+const ABOUT = {
+"bitcoin": "La première crypto, créée en 2009 comme une monnaie numérique sans banque. Aujourd'hui, elle sert surtout d'« or numérique » pour mettre de la valeur de côté.",
+"ethereum": "Une blockchain qui fait tourner des programmes automatiques (smart contracts). C'est la base de la finance décentralisée, des NFT et de milliers d'autres jetons.",
+"solana": "Une blockchain très rapide et peu chère, utilisée pour les paiements, la finance décentralisée, les NFT et les memecoins.",
+"ripple": "Le jeton XRP sert à envoyer de l'argent à l'international en quelques secondes, entre banques et sociétés de paiement. Il est porté par l'entreprise Ripple.",
+"binancecoin": "Le jeton de Binance, la plus grande plateforme d'échange du monde. Il réduit les frais sur Binance et sert de carburant à sa blockchain, BNB Chain.",
+"cardano": "Une blockchain de smart contracts construite avec une approche scientifique (recherches relues par des experts), axée sur la sécurité et la faible consommation d'énergie.",
+"dogecoin": "Une crypto née comme une blague autour du mème du chien Shiba, devenue populaire grâce à sa communauté et à Elon Musk. Elle sert surtout aux pourboires et à la spéculation.",
+"avalanche-2": "Une blockchain rapide qui permet de créer ses propres sous-réseaux. Elle est utilisée pour la finance décentralisée et pour mettre des actifs réels sur la blockchain.",
+"polkadot": "Un réseau qui relie plusieurs blockchains spécialisées pour qu'elles partagent leur sécurité et échangent des informations.",
+"chainlink": "Fait le lien entre les blockchains et le monde réel : il fournit aux smart contracts des données fiables, comme les prix des actifs.",
+"polygon-ecosystem-token": "Le jeton de Polygon, un réseau qui rend Ethereum plus rapide et moins cher en traitant les transactions à côté de lui.",
+"uniswap": "Le jeton d'Uniswap, la plus grande plateforme d'échange décentralisée, où l'on échange des cryptos sans intermédiaire. UNI sert à voter sur son évolution.",
+"litecoin": "Une version plus rapide et moins chère du Bitcoin, créée en 2011, pensée pour les paiements du quotidien.",
+"cosmos": "Un réseau qui permet de créer facilement des blockchains capables de communiquer entre elles, surnommé « l'internet des blockchains ».",
+"near": "Une blockchain simple à utiliser pour les développeurs et le grand public, de plus en plus tournée vers l'intelligence artificielle.",
+"aave": "Une plateforme de prêt et d'emprunt de cryptos sans banque. Le jeton AAVE sert à la gouverner et à la sécuriser.",
+"stellar": "Un réseau de paiement à très bas coût pour envoyer de l'argent à l'international et convertir des devises.",
+"algorand": "Une blockchain rapide et économe en énergie, pensée pour les paiements et les applications financières.",
+"hedera-hashgraph": "Un réseau public très rapide gouverné par un conseil de grandes entreprises, utilisé pour les paiements et la traçabilité.",
+"internet-computer": "Une blockchain qui veut héberger directement des sites web et des applications, comme un cloud décentralisé.",
+"filecoin": "Un réseau de stockage de fichiers décentralisé : on paie en FIL pour louer de l'espace disque à des fournisseurs du monde entier.",
+"aptos": "Une blockchain rapide créée par d'anciens ingénieurs de Meta (Facebook), axée sur la performance et la sécurité.",
+"arbitrum": "Le plus grand réseau de « couche 2 » d'Ethereum : il rend les transactions bien moins chères. ARB sert à voter sur son évolution.",
+"optimism": "Un réseau de « couche 2 » d'Ethereum qui réduit les frais. Sa technologie est reprise par d'autres réseaux, comme Base de Coinbase.",
+"sui": "Une blockchain très rapide créée par d'anciens ingénieurs de Meta, conçue pour les jeux, la finance et les applications grand public.",
+"injective-protocol": "Une blockchain spécialisée dans la finance : échanges, produits dérivés et marchés décentralisés.",
+"render-token": "Un réseau qui loue la puissance de cartes graphiques inutilisées pour faire du rendu 3D et des calculs d'intelligence artificielle.",
+"the-open-network": "La blockchain liée à la messagerie Telegram : elle permet d'envoyer des cryptos et d'utiliser des mini-applications directement dans Telegram.",
+"tron": "Une blockchain très utilisée pour transférer des stablecoins, notamment l'USDT, avec des frais très bas.",
+"shiba-inu": "Un memecoin inspiré du Dogecoin, porté par une grande communauté. Il a aussi son propre réseau, Shibarium.",
+"pepe": "Un memecoin basé sur le mème de la grenouille Pepe. Il n'a pas d'utilité particulière : son prix dépend surtout de l'engouement.",
+"hyperliquid": "Une plateforme d'échange décentralisée de contrats à terme, sur sa propre blockchain. HYPE sert à la sécuriser et profite de ses revenus.",
+"swissborg": "Le jeton de SwissBorg, l'appli que tu utilises. Selon la quantité détenue, il donne des avantages : frais réduits, meilleurs rendements, accès anticipé.",
+"tezos": "Une blockchain de smart contracts qui peut se mettre à jour elle-même par vote, sans scission. Elle est utilisée pour les NFT et la tokenisation.",
+"the-graph": "Indexe les données des blockchains pour que les applications les retrouvent rapidement, comme un moteur de recherche pour le web3.",
+"the-sandbox": "Un monde virtuel (métavers) où l'on achète des terrains et où l'on crée des jeux et des objets. SAND est sa monnaie.",
+"decentraland": "Un monde virtuel en 3D géré par ses utilisateurs. MANA sert à y acheter des terrains et des objets.",
+"axie-infinity": "Un jeu vidéo où l'on élève et fait combattre des créatures. AXS sert à gouverner le jeu et à récompenser les joueurs.",
+"curve-dao-token": "Une plateforme d'échange décentralisée spécialisée dans les stablecoins, avec des frais et des écarts de prix très faibles.",
+"lido-dao": "Permet de « staker » ses ETH (les bloquer pour sécuriser Ethereum et toucher des intérêts) tout en gardant un jeton échangeable.",
+"bittensor": "Un réseau décentralisé d'intelligence artificielle où des modèles sont récompensés en TAO selon l'utilité de leurs réponses.",
+"sei-network": "Une blockchain très rapide, optimisée pour les échanges et le trading.",
+"celestia": "Fournit aux autres blockchains un espace pour publier leurs données à moindre coût, ce qui les aide à grandir.",
+"jupiter-exchange-solana": "Le principal outil d'échange sur Solana : il trouve automatiquement le meilleur prix entre toutes les plateformes. JUP sert à le gouverner.",
+"dogwifcoin": "Un memecoin de Solana basé sur l'image d'un chien portant un bonnet. Sa valeur dépend uniquement de sa popularité.",
+"bonk": "Un memecoin à l'effigie d'un chien, très populaire sur Solana et intégré à de nombreuses applis de cet écosystème.",
+"ondo-finance": "Met des placements traditionnels, comme les bons du Trésor américain, sur la blockchain pour les rendre accessibles en crypto.",
+"ethena": "Propose un dollar synthétique (USDe) qui verse un rendement. ENA sert à gouverner le projet.",
+"pyth-network": "Fournit aux blockchains des prix en temps réel (actions, cryptos, devises) venant directement de grandes sociétés de trading.",
+"immutable-x": "Un réseau spécialisé dans les jeux vidéo sur blockchain, pour échanger des objets de jeu sans frais.",
+"quant-network": "Un logiciel qui connecte les blockchains entre elles et aux systèmes des banques. QNT sert à payer ses licences.",
+"kaspa": "Une crypto minée comme Bitcoin, mais beaucoup plus rapide, grâce à une structure qui traite plusieurs blocs en parallèle.",
+"bitcoin-cash": "Une version de Bitcoin issue d'une scission en 2017, avec des blocs plus grands pour des paiements moins chers.",
+"ethereum-classic": "La chaîne Ethereum d'origine, gardée par ceux qui ont refusé d'annuler les effets d'un piratage en 2016."
+};
+let aboutCache = store.get("about", {});
+async function loadAbout(c){
+  const el=$("#about"); if(!el) return;
+  if(ABOUT[c.id]){ el.textContent=ABOUT[c.id]; return; }
+  if(aboutCache[c.id]){ el.innerHTML=aboutCache[c.id]; return; }
+  el.textContent="Recherche de la description…";
+  try{
+    const r=await fetch("https://api.coingecko.com/api/v3/coins/"+encodeURIComponent(c.id)+"?localization=true&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false");
+    if(!r.ok) throw 0;
+    const j=await r.json(); const fr=(j.description&&j.description.fr)||"", en=(j.description&&j.description.en)||"";
+    const tmp=document.createElement("div"); tmp.innerHTML=fr||en; const txt=(tmp.textContent||"").replace(/\s+/g," ").trim();
+    if(!txt) throw 0;
+    const first = (txt.match(/^.{20,300}?[.!?](\s|$)/)||[txt.slice(0,240)+"…"])[0].trim();
+    const html = first.replace(/</g,"&lt;") + (fr?"":' <span class="sn">(description en anglais)</span>');
+    aboutCache[c.id]=html; store.set("about",aboutCache);
+    if($("#about")) $("#about").innerHTML=html;
+  }catch(e){ if($("#about")) $("#about").textContent="Pas de description disponible. Utilise « Copier une question pour Claude » pour en savoir plus."; }
+}
+
+
+/* ---------- Outils de filtre ---------- */
+const SKIP = /(^|\s)(wrapped|staked|bridged|restaked|liquid staking)|usd|\beur|tether|dai$|gold|paxg|xaut/i;
+// Cryptos à toujours suivre : tes ajouts, tes favoris et ce que tu possèdes
+function keepIds(){ return [...new Set([...ids, ...favs, ...((typeof PF!=="undefined"&&PF.buys)||[]).map(b=>b.coin)])]; }
+function findCoin(id){ return coins.find(x=>x.id===id) || (btc && btc.id===id ? btc : null); }
+
+
+/* ---------- Taux euro / dollar (pour mélanger des achats en € et en $) ---------- */
+let fx = store.get("fx", 0.92); // euros pour 1 dollar
+async function loadFx(){
+  try{ const r=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=eur,usd");
+    if(!r.ok) return; const j=await r.json(); const e=j.tether&&j.tether.eur, u=j.tether&&j.tether.usd;
+    if(e&&u){ fx=e/u; store.set("fx",fx); } }catch(e){}
+}
+function conv(v, from, to){ if(from===to) return v; return from==="usd" ? v*fx : v/fx; }
+const today = () => new Date().toISOString().slice(0,10);
+const fdate = t => new Date(t).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit"});
+
+/* ---------- Portefeuille + plan de sortie ---------- */
+const PF = store.get("pf", null) || {buys:[], plans:{}};
+PF.plans = PF.plans || {};
+if(PF.fee==null) PF.fee = 0.75; // frais SwissBorg en % (offre Community Premium)
+const FEE_PLANS = [["Standard",1],["Community Premium",0.75],["Generation Premium",0.5],["Genesis Premium",0.25]];
+const feeRate = () => (PF.fee||0)/100;
+const pctFr = v => (+v).toLocaleString("fr-FR",{maximumFractionDigits:2})+" %";
+function savePF(){ store.set("pf", PF); }
+function priced(id){ return findCoin(id); }
+function txTime(b){ return b.t || Date.parse(b.date) || 0; }
+function positions(){
+  const by={};
+  PF.buys.forEach(b=>{ (by[b.coin] ||= []).push(b); });
+  return Object.entries(by).map(([id,txs])=>{
+    txs = [...txs].sort((x,y)=>txTime(x)-txTime(y));
+    const c = priced(id);
+    let qty=0, cost=0, realized=0, fees=0;
+    txs.forEach(t=>{
+      const px = conv(t.price,t.cur,cur);
+      const fee = conv(t.feeAmt||0,t.cur,cur); fees += fee;
+      if(t.type==="sell"){ const avg = qty ? cost/qty : 0; const q=Math.min(t.qty,qty); cost -= avg*q; realized += (px-avg)*q - fee; qty -= q; if(qty<1e-12){ qty=0; cost=0; } }
+      else { qty += t.qty; cost += t.qty*px + fee; }
+    });
+    const avg = qty ? cost/qty : 0;
+    const price = c ? c.current_price : null;
+    const value = price!=null ? qty*price : null;
+    const pl = value!=null ? value-cost : null, plPct = value!=null && cost ? (value/cost-1)*100 : null;
+    const plan = PF.plans[id] || {tp:15, sl:8};
+    const target = avg*(1+plan.tp/100), stop = avg*(1-plan.sl/100);
+    const status = price==null ? "?" : price>=target ? "tp" : price<=stop ? "sl" : "in";
+    return {id, c, buys:txs, qty, cost, avg, price, value, pl, plPct, plan, target, stop, status, realized, fees, open: qty>0,
+      sym: c ? c.symbol.toUpperCase() : (txs[0].sym||id), name: c ? c.name : (txs[0].name||id)};
+  }).sort((a,b)=>(b.value??0)-(a.value??0));
+}
+function held(id){ const p=positions().find(x=>x.id===id); return p && p.open ? p : null; }
+
+
+/* ---------- Montant conseillé par achat (gestion du risque) ---------- */
+if(PF.risk==null) PF.risk = 1; // % du capital qu'on accepte de perdre si la limite de perte est touchée
+function capital(){ return PF.capital>0 ? conv(PF.capital, PF.capCur||"eur", cur) : null; }
+function sizing(c){
+  const cap = capital(); const sl = (PF.plans[c.id]||{sl:8}).sl; const f = feeRate();
+  const vol = c.a.vol||0;
+  const out = {sl, vol, cap};
+  if(!cap) return out;
+  const maxLoss = cap*PF.risk/100;
+  // Perte si la limite est touchée = montant × (limite + frais d'achat et de vente)
+  out.maxLoss = maxLoss;
+  out.amount = maxLoss / (sl/100 + 2*f);
+  // Jamais plus de 20 % du capital sur une seule crypto
+  const h = held(c.id); const already = h ? h.value||0 : 0;
+  out.cap20 = Math.max(0, cap*0.2 - already); out.already = already;
+  if(out.amount > out.cap20){ out.amount = out.cap20; out.capped = true; }
+  return out;
+}
+function sizingHtml(c){
+  const z = sizing(c), unit = cur==="usd"?"$":"€";
+  const noise = z.vol*1.5 > z.sl ? `<br><span class="warn-t">Attention : ${c.symbol.toUpperCase()} bouge d'environ ±${z.vol.toFixed(1).replace(".",",")} % par jour. Ta limite de perte à −${z.sl} % risque d'être touchée par les simples variations normales.</span>` : "";
+  if(!z.cap) return `<div class="sizer"><b>Montant conseillé</b><p>Indique le montant total que tu consacres aux cryptos pour obtenir un conseil de mise :</p>
+    <div class="row-in"><input id="capIn" type="number" min="0" step="any" inputmode="decimal" placeholder="ex. 2000"><span class="sn">${unit}</span><button class="btn" type="button" id="capOk">Valider</button></div>${noise}</div>`;
+  if(z.amount < 1) return `<div class="sizer"><b>Montant conseillé : rien de plus</b><p>Tu as déjà ${amt(z.already)} sur cette crypto, soit le maximum conseillé de 20 % de ton capital.</p>${noise}</div>`;
+  return `<div class="sizer"><b>Montant conseillé : ${amt(z.amount)}</b> <button class="btn ghost" type="button" id="useSize" style="color:var(--ink)">Utiliser</button>
+    <p>Avec ta limite de perte à −${z.sl} % (plus les frais), tu risques au maximum <b>${amt(z.maxLoss)}</b>, soit ${pctFr(PF.risk)} de ton capital de ${amt(z.cap)}.${z.capped?" Montant plafonné pour ne pas dépasser 20 % de ton capital sur une seule crypto.":""}</p>${noise}</div>`;
+}
+function bindSizing(c, onUse){
+  const u=$("#useSize"); if(u) u.onclick=()=>onUse(Math.floor(sizing(c).amount*100)/100);
+  const ok=$("#capOk"); if(ok) ok.onclick=()=>{ const v=parseFloat($("#capIn").value); if(!(v>0)) return toast("Indique un montant");
+    PF.capital=v; PF.capCur=cur; savePF(); toast("Capital enregistré : "+amt(v)); openTrade(c.id,"buy"); };
+}
+
+/* ---------- Achat / vente rapide au prix du moment ---------- */
+function openTrade(id, side){
+  const c = findCoin(id); if(!c) return;
+  const pos = held(id); const sym=c.symbol.toUpperCase(); const unit = cur==="usd"?"$":"€";
+  if(side==="sell" && !pos){ toast("Tu ne possèdes pas de "+sym+" dans ton portefeuille"); return; }
+  const price = c.current_price;
+  $("#sheetBody").innerHTML = `
+    <div class="sh-top">${icon(c,"lg")}<h2>${side==="buy"?"Acheter":"Vendre"} ${sym}</h2><button class="btn ghost" type="button" id="close" style="color:var(--ink)">Fermer</button></div>
+    <p class="hint" style="margin:0">Prix enregistré : <b>${eur(price)}</b>, le cours de cet instant (${new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}). ${side==="sell"?`Tu possèdes ${pos.qty.toLocaleString("fr-FR",{maximumFractionDigits:8})} ${sym}, soit ${eur(pos.value)}.`:""}</p>
+    <div class="form">
+      ${side==="buy"?sizingHtml(c):""}
+      <label>Montant en ${unit}<input id="tAmt" type="number" step="any" min="0" inputmode="decimal" placeholder="ex. 50"></label>
+      <div class="quick">${(side==="buy"?[25,50,100,250]:[]).map(v=>`<button type="button" class="btn ghost" data-amt="${v}" style="color:var(--ink)">${v} ${unit}</button>`).join("")}${side==="sell"?[25,50,100].map(v=>`<button type="button" class="btn ghost" data-part="${v}" style="color:var(--ink)">${v===100?"Tout vendre":v+" %"}</button>`).join(""):""}</div>
+      <p class="sn" id="tQty" style="margin:0;line-height:1.5">Quantité : —</p>
+      <div class="actions"><button class="btn ${side==="sell"?"sell":""}" type="button" id="tOk">${side==="buy"?"Enregistrer l'achat":"Enregistrer la vente"}</button></div>
+      <p class="sn" style="margin:0">Fais aussi l'opération dans l'appli SwissBorg : ici, elle est seulement notée dans ton portefeuille. Le prix SwissBorg peut légèrement différer du cours affiché.</p>
+    </div>`;
+  $("#veil").hidden=false; $("#sheet").hidden=false;
+  let qty=0;
+  const f = feeRate(); let feeAmt=0;
+  const upd=()=>{ const a=parseFloat($("#tAmt").value);
+    if(side==="buy"){ qty = a>0 ? a*(1-f)/price : 0; feeAmt = a>0 ? a*f : 0; }
+    else { qty = a>0 ? Math.min(a/price, pos.qty) : 0; feeAmt = qty*price*f; }
+    const q = qty.toLocaleString("fr-FR",{maximumFractionDigits:8})+" "+sym;
+    $("#tQty").innerHTML = !(qty>0) ? "Quantité : —" : side==="buy"
+      ? `Frais SwissBorg ${pctFr(PF.fee)} : <b>${amt(feeAmt)}</b> · réellement investi : <b>${amt(qty*price)}</b><br>Tu reçois : <b>${q}</b>`
+      : `Tu vends <b>${q}</b>${a/price>pos.qty?" (tout ce que tu possèdes)":""}<br>Frais SwissBorg ${pctFr(PF.fee)} : <b>${amt(feeAmt)}</b> · tu reçois : <b>${amt(qty*price-feeAmt)}</b>`; };
+  $("#tAmt").oninput=upd;
+  document.querySelectorAll("[data-amt]").forEach(b=>b.onclick=()=>{ $("#tAmt").value=b.dataset.amt; upd(); });
+  document.querySelectorAll("[data-part]").forEach(b=>b.onclick=()=>{ const q=pos.qty*(+b.dataset.part)/100; $("#tAmt").value=+(q*price).toFixed(2); upd(); if(+b.dataset.part===100){ qty=pos.qty; feeAmt=qty*price*f; } });
+  $("#close").onclick=closeSheet;
+  $("#tOk").onclick=()=>{
+    if(!(qty>0)) return toast("Indique un montant");
+    const now=Date.now();
+    PF.buys.push({id:now.toString(36), type:side, coin:id, sym, name:c.name, qty, price, cur, feePct:PF.fee, feeAmt, t:now, date:new Date(now).toISOString().slice(0,10)});
+    if(side==="buy"){ if(!PF.plans[id]) PF.plans[id]={tp:15,sl:8}; favs.add(id); store.set("favs",[...favs]); }
+    savePF(); closeSheet(); render();
+    toast((side==="buy"?"Achat":"Vente")+" de "+amt(side==="buy"?qty*price+feeAmt:qty*price)+" de "+sym+" enregistré"+(side==="buy"?"":"e"));
+  };
+  if(side==="buy") bindSizing(c, v=>{ $("#tAmt").value=v; upd(); });
+  setTimeout(()=>{ try{ $("#tAmt").focus(); }catch(e){} }, 50);
+}
+function money(v){ return v==null ? "—" : eur(v); }
+// Montants (gains, valeurs) : toujours 2 décimales, et 0 sans signe
+function amt(v){ if(v==null) return "—"; return v.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+(cur==="usd"?" $":" €"); }
+function signed(v){ if(v==null) return "—"; if(Math.abs(v)<0.005) return amt(0); return (v>0?"+":"−")+amt(Math.abs(v)); }
+
+function renderPortfolio(el){
+  const all = positions(), ps = all.filter(p=>p.open), closed = all.filter(p=>!p.open);
+  const realized = all.reduce((x,p)=>x+p.realized,0), allFees = all.reduce((x,p)=>x+p.fees,0);
+  const tot = ps.reduce((x,p)=>x+(p.value??0),0), cost = ps.reduce((x,p)=>x+p.cost,0);
+  const pl = tot-cost, plPct = cost ? (tot/cost-1)*100 : 0;
+  const alloc = ps.filter(p=>p.value>0).map(p=>({p, w:p.value/tot}));
+  el.innerHTML = `
+    <div class="card">
+      <div class="kpis four">
+        <div class="kpi"><span>Valeur actuelle</span><b>${amt(tot)}</b></div>
+        <div class="kpi"><span>Investi</span><b>${amt(cost)}</b><small>dont ${amt(allFees)} de frais au total</small></div>
+        <div class="kpi"><span>Plus-value latente</span><b class="${cls(pl)}">${signed(pl)}</b><small class="${cls(plPct)}">${pct(plPct)}</small></div>
+        <div class="kpi"><span>Gains réalisés</span><b class="${cls(realized)}">${signed(realized)}</b><small>sur tes ventes</small></div>
+      </div>
+      ${alloc.length ? `<div class="alloc" role="img" aria-label="Répartition du portefeuille">${alloc.map(({p,w})=>`<i style="flex:${w};background:${p.c?coinColor(p.c):"var(--muted)"}" title="${p.sym} ${(w*100).toFixed(0)} %"></i>`).join("")}</div>
+      <div class="legend">${alloc.map(({p,w})=>`<span><i style="background:${p.c?coinColor(p.c):"var(--muted)"}"></i>${p.sym} ${(w*100).toFixed(0)} %</span>`).join("")}</div>` : ""}
+      <div class="actions"><button class="btn" type="button" id="addBuy">+ Ajouter un achat</button></div>
+    </div>
+    <div class="card">
+      <h3 class="ct">Réglages et sauvegarde</h3>
+      <div class="form"><label>Mon offre SwissBorg (frais par achat et par vente)
+        <select id="feePlan">${FEE_PLANS.map(([n,v])=>`<option value="${v}" ${PF.fee===v?"selected":""}>${n} · ${pctFr(v)}</option>`).join("")}<option value="other" ${FEE_PLANS.some(([,v])=>v===PF.fee)?"":"selected"}>Autre</option></select></label>
+        <label id="feeOtherL" ${FEE_PLANS.some(([,v])=>v===PF.fee)?"hidden":""}>Frais en %<input id="feeOther" type="number" min="0" max="5" step="0.01" value="${PF.fee}"></label></div>
+      <div class="form two"><label>Capital consacré aux cryptos (${cur==="usd"?"$":"€"})<input id="capSet" type="number" min="0" step="any" value="${capital()!=null?+capital().toFixed(2):""}" placeholder="ex. 2000"></label>
+        <label>Perte max acceptée par achat<select id="riskSet">${[0.5,1,2].map(v=>`<option value="${v}" ${PF.risk===v?"selected":""}>${pctFr(v)} du capital${v===1?" (conseillé)":""}</option>`).join("")}</select></label></div>
+      <p class="sn" style="margin:0">Ces deux réglages servent au montant conseillé quand tu appuies sur « Acheter ».</p>
+      <p class="sn" style="margin:0">Les frais s'appliquent aux nouvelles opérations ; les opérations déjà notées gardent leurs frais d'origine.</p>
+      <div class="actions"><button class="btn ghost" type="button" id="bkExport" style="color:var(--ink)">Exporter une sauvegarde</button><button class="btn ghost" type="button" id="bkImport" style="color:var(--ink)">Importer une sauvegarde</button><input type="file" id="bkFile" accept=".json,application/json" hidden></div>
+      <p class="sn" style="margin:0">La sauvegarde contient ton portefeuille, tes favoris, ton bilan, tes alertes et tes ajouts. Fais-en une avant de remplacer le fichier de la page.</p>
+    </div>
+    ${ps.length ? ps.map(p=>`
+      <div class="card pos">
+        <div class="pos-top">${p.c?icon(p.c):`<span class="ico">${p.sym.slice(0,3)}</span>`}
+          <div class="coin"><b>${p.sym}</b> <span class="sn">${p.qty.toLocaleString("fr-FR",{maximumFractionDigits:8})}</span><small>${p.name}</small></div>
+          <div class="pos-val"><b>${amt(p.value)}</b><span class="${cls(p.pl)}">${signed(p.pl)} · ${pct(p.plPct)}</span></div>
+        </div>
+        <div class="pos-mid sn">Prix moyen ${money(p.avg)} · actuel ${money(p.price)}</div>
+        <div class="plan">
+          <div class="plan-head"><span class="sn">Plan de sortie</span>
+            <span class="chip ${p.status==="tp"?"c-good":p.status==="sl"?"c-bad":"c-mid"}">${p.status==="tp"?"Objectif atteint":p.status==="sl"?"Limite de perte atteinte":p.status==="?"?"Prix inconnu":"Dans le plan"}</span></div>
+          <div class="track"><span class="t-sl"></span><span class="t-tp"></span>${p.price!=null?`<i style="left:${clamp((p.price-p.stop)/((p.target-p.stop)||1),0,1)*100}%"></i>`:""}</div>
+          <div class="plan-lab sn"><span>Stop −${p.plan.sl} % · ${money(p.stop)}</span><span>Objectif +${p.plan.tp} % · ${money(p.target)}</span></div>
+          <div class="plan-msg">${p.status==="tp"?"Ton objectif est atteint : c'est le moment prévu pour vendre tout ou partie et sécuriser ton gain.":p.status==="sl"?"Ta limite de perte est atteinte : c'est le moment prévu pour vendre et éviter que la perte se creuse.":p.status==="in"?"Le prix est entre ta limite de perte et ton objectif : rien à faire pour l'instant.":"Ajoute cette crypto dans « Mes ajouts » pour suivre son prix."}</div>
+        </div>
+        <details><summary class="sn">${p.buys.length} opération${p.buys.length>1?"s":""} · modifier</summary>
+          <div class="plan-edit"><label>Objectif +<input type="number" class="num" min="1" step="1" value="${p.plan.tp}" data-tp="${p.id}"> %</label><label>Stop −<input type="number" class="num" min="1" max="99" step="1" value="${p.plan.sl}" data-sl="${p.id}"> %</label></div>
+          ${p.buys.map(b=>`<div class="buy"><span><b class="${b.type==="sell"?"down":"up"}">${b.type==="sell"?"Vente":"Achat"}</b> ${fdate(txTime(b))} · ${b.qty.toLocaleString("fr-FR",{maximumFractionDigits:8})} à ${b.price.toLocaleString("fr-FR",{maximumFractionDigits:8})} ${b.cur==="usd"?"$":"€"}</span><button class="btn ghost" type="button" data-delbuy="${b.id}" style="color:var(--ink)">Supprimer</button></div>`).join("")}
+        </details>
+      </div>`).join("") : `<div class="card state">Ton portefeuille est vide. Appuie sur « + Ajouter un achat » et indique ce que tu as acheté sur SwissBorg : la page calculera tes gains et suivra ton plan de sortie.</div>`}
+    ${closed.length?`<div class="card"><h3 class="ct">Positions clôturées</h3>${closed.map(p=>`<div class="buy"><span><b>${p.sym}</b> · ${p.buys.length} opérations</span><b class="${cls(p.realized)}">${signed(p.realized)}</b></div>`).join("")}</div>`:""}`;
+  $("#addBuy").onclick=()=>openBuy();
+  $("#feePlan").onchange=e=>{ if(e.target.value==="other"){ $("#feeOtherL").hidden=false; return; } PF.fee=+e.target.value; savePF(); toast("Frais : "+pctFr(PF.fee)); render(); };
+  $("#capSet").onchange=e=>{ const v=parseFloat(e.target.value); if(v>0){ PF.capital=v; PF.capCur=cur; savePF(); toast("Capital : "+amt(v)); } else if(e.target.value===""){ PF.capital=null; savePF(); } };
+  $("#riskSet").onchange=e=>{ PF.risk=+e.target.value; savePF(); toast("Perte max : "+pctFr(PF.risk)+" du capital"); };
+  $("#feeOther").onchange=e=>{ const v=parseFloat(e.target.value); if(v>=0 && v<=5){ PF.fee=v; savePF(); toast("Frais : "+pctFr(v)); } };
+  $("#bkExport").onclick=exportBackup;
+  $("#bkImport").onclick=()=>$("#bkFile").click();
+  $("#bkFile").onchange=e=>{ const f=e.target.files[0]; if(f) importBackup(f); e.target.value=""; };
+  el.querySelectorAll("[data-delbuy]").forEach(b=>b.onclick=()=>{ if(b.dataset.confirm){ PF.buys=PF.buys.filter(x=>x.id!==b.dataset.delbuy); savePF(); render(); } else { b.dataset.confirm="1"; b.textContent="Confirmer"; } });
+  el.querySelectorAll("[data-tp]").forEach(i=>i.onchange=()=>{ const v=parseFloat(i.value); if(v>0){ (PF.plans[i.dataset.tp] ||= {tp:15,sl:8}).tp=v; savePF(); render(); }});
+  el.querySelectorAll("[data-sl]").forEach(i=>i.onchange=()=>{ const v=parseFloat(i.value); if(v>0&&v<100){ (PF.plans[i.dataset.sl] ||= {tp:15,sl:8}).sl=v; savePF(); render(); }});
+}
+function openBuy(pre){
+  const list = [...coins, ...(btc && !coins.find(c=>c.id==="bitcoin") ? [btc] : [])].sort((a,b)=>(a.market_cap_rank||999)-(b.market_cap_rank||999));
+  const sel = pre || (list[0]&&list[0].id);
+  $("#sheetBody").innerHTML = `
+    <div class="sh-top"><h2>Ajouter un achat</h2><button class="btn ghost" type="button" id="close" style="color:var(--ink)">Fermer</button></div>
+    <div class="form">
+      <label>Crypto<select id="bCoin">${list.map(c=>`<option value="${c.id}" ${c.id===sel?"selected":""}>${c.symbol.toUpperCase()} · ${c.name}</option>`).join("")}</select></label>
+      <label>Quantité achetée<input id="bQty" type="number" step="any" min="0" placeholder="ex. 0,05"></label>
+      <label>Prix payé par unité (${cur==="usd"?"$":"€"})<input id="bPrice" type="number" step="any" min="0"></label>
+      <label>Ou montant total payé (${cur==="usd"?"$":"€"})<input id="bTotal" type="number" step="any" min="0" placeholder="calcule la quantité"></label>
+      <label>Date<input id="bDate" type="date" value="${today()}"></label>
+      <div class="two"><label>Objectif de gain (%)<input id="bTp" type="number" min="1" step="1" value="15"></label><label>Limite de perte (%)<input id="bSl" type="number" min="1" max="99" step="1" value="8"></label></div>
+      <p class="hint" style="margin:0">Le plan de sortie te dira quand le prix atteint ton objectif ou ta limite de perte, calculés depuis ton prix moyen d'achat. La crypto est aussi ajoutée à tes favoris.</p>
+      <div class="actions"><button class="btn" type="button" id="bSave">Enregistrer l'achat</button></div>
+    </div>`;
+  $("#veil").hidden=false; $("#sheet").hidden=false;
+  const fill=()=>{ const c=list.find(x=>x.id===$("#bCoin").value); if(c) $("#bPrice").value = +c.current_price.toPrecision(6);
+    const pl=PF.plans[$("#bCoin").value]; if(pl){ $("#bTp").value=pl.tp; $("#bSl").value=pl.sl; } };
+  fill(); $("#bCoin").onchange=fill;
+  $("#bTotal").oninput=()=>{ const t=parseFloat($("#bTotal").value), p=parseFloat($("#bPrice").value); if(t>0&&p>0) $("#bQty").value=+(t/p).toPrecision(8); };
+  $("#close").onclick=closeSheet;
+  $("#bSave").onclick=()=>{
+    const id=$("#bCoin").value, qty=parseFloat($("#bQty").value), price=parseFloat($("#bPrice").value), tp=parseFloat($("#bTp").value), sl=parseFloat($("#bSl").value);
+    if(!(qty>0)) return toast("Indique la quantité ou le montant total");
+    if(!(price>0)) return toast("Indique le prix payé");
+    const c=list.find(x=>x.id===id);
+    PF.buys.push({id:Date.now().toString(36), type:"buy", coin:id, sym:c?c.symbol.toUpperCase():id, name:c?c.name:id, qty, price, cur, feePct:PF.fee, feeAmt:qty*price*feeRate()/(1-feeRate()), date:$("#bDate").value||today()});
+    PF.plans[id] = {tp: tp>0?tp:15, sl: sl>0&&sl<100?sl:8};
+    favs.add(id); store.set("favs",[...favs]);
+    if(!ids.includes(id) && c && (c.market_cap_rank||999)>100){ ids.push(id); store.set("ids",ids); }
+    savePF(); closeSheet(); tab="pf"; store.set("tab",tab); render(); toast("Achat enregistré");
+  };
+}
+function planAlerts(out){
+  if(AL.opts.plan===false) return;
+  positions().forEach(p=>{
+    if(p.price==null || !p.open) return;
+    if(cond(p.price>=p.target,"tp_"+p.id)) out.push({msg:`${p.sym} a atteint ton objectif de +${p.plan.tp} % (${eur(p.price)}) : pense à sécuriser ton gain`, lvl:"good"});
+    if(cond(p.price<=p.stop,"sl_"+p.id)) out.push({msg:`${p.sym} a atteint ta limite de perte de −${p.plan.sl} % (${eur(p.price)}) : c'est le moment prévu pour vendre`, lvl:"bad"});
+  });
+}
+
+/* ---------- Bilan des signaux ---------- */
+const SIG = store.get("signals", null) || {list:[], prev:{}};
+function saveSIG(){ store.set("signals", SIG); }
+SIG.prevL = SIG.prevL || {};
+let bilanMode = store.get("bilanMode","court");
+// Court terme : signal « Opportunité », vérifié à 1 semaine et 1 mois
+// Long terme : signal « Bon potentiel », vérifié à 1 mois et 3 mois
+const HORIZ = { court:[["r7",7,"1 semaine"],["r30",30,"1 mois"]], long:[["r30",30,"1 mois"],["r90",90,"3 mois"]] };
+function trackSignals(){
+  if(!coins.length) return;
+  const now=Date.now();
+  coins.forEach(c=>{
+    if(c.id==="bitcoin") return;
+    [["court","Opportunité",SIG.prev,7],["long","Bon potentiel",SIG.prevL,30]].forEach(([mode,want,prev,gap])=>{
+      if(mode==="court" && c.a.ma50==null) return; // attendre l'historique 20/50 jours
+      const [lab]=label(c.a[mode],c.a,mode); const before=prev[c.id];
+      if(lab===want && before!==want){
+        const recent = SIG.list.find(s=>(s.mode||"court")===mode && s.coin===c.id && now-s.t < gap*864e5);
+        if(!recent) SIG.list.unshift({id:now.toString(36)+mode+c.id, mode, coin:c.id, sym:c.symbol.toUpperCase(), name:c.name, t:now, price:c.current_price, cur, score:c.a[mode], btc: btc?btc.current_price:null});
+      }
+      prev[c.id]=lab;
+    });
+  });
+  // Résultats : mesurés au premier passage après chaque échéance
+  SIG.list.forEach(s=>{
+    const c=findCoin(s.coin); if(!c) return;
+    const ch=(c.current_price/conv(s.price,s.cur,cur)-1)*100;
+    const bch = s.btc && btc ? (btc.current_price/conv(s.btc,s.cur,cur)-1)*100 : null;
+    HORIZ[s.mode||"court"].forEach(([k,d])=>{ if(s[k]==null && now-s.t>=d*864e5){ s[k]=ch; s["b"+k.slice(1)]=bch; } });
+  });
+  SIG.list = SIG.list.slice(0,400);
+  saveSIG();
+}
+function liveChange(s){ const c=findCoin(s.coin); return c ? (c.current_price/conv(s.price,s.cur,cur)-1)*100 : null; }
+function stats(list, key){
+  const bkey="b"+key.slice(1);
+  const done=list.filter(s=>s[key]!=null); if(!done.length) return null;
+  const win=done.filter(s=>s[key]>0).length, avg=done.reduce((x,s)=>x+s[key],0)/done.length;
+  const withB=done.filter(s=>s[bkey]!=null), vs = withB.length ? withB.reduce((x,s)=>x+(s[key]-s[bkey]),0)/withB.length : null;
+  return {n:done.length, win:Math.round(100*win/done.length), avg, vs};
+}
+function renderBilan(el){
+  const mode=bilanMode, H=HORIZ[mode], list=SIG.list.filter(s=>(s.mode||"court")===mode);
+  const sA=stats(list,H[0][0]), sB=stats(list,H[1][0]);
+  const box=(t,s)=>`<div class="kpi"><span>${t}</span>${s?`<b class="${cls(s.avg)}">${pct(s.avg)}</b><small>${s.win} % gagnants sur ${s.n} signal${s.n>1?"s":""}${s.vs!=null?` · ${s.vs>=0?"+":"−"}${Math.abs(s.vs).toFixed(1).replace(".",",")} pts vs BTC`:""}</small>`:`<b class="sn">—</b><small>pas encore de résultat</small>`}</div>`;
+  const ref = mode==="court" ? sA : sB; // horizon de référence : 1 semaine en court terme, 3 mois en long terme
+  const refName = mode==="court" ? "1 semaine" : "3 mois";
+  let verdict;
+  if(ref && ref.n>=10){
+    verdict = ref.avg>0 && ref.win>=55 && (ref.vs??0)>0 ? "Sur ces signaux, la stratégie fait mieux que simplement garder du Bitcoin. Continue à observer avant d'augmenter tes mises."
+      : ref.avg>0 ? "La stratégie gagne un peu d'argent, mais pas clairement plus que Bitcoin. Garder du Bitcoin aurait été aussi efficace."
+      : "Pour l'instant, ces signaux font perdre de l'argent en moyenne. Ne t'y fie pas pour acheter.";
+  } else verdict = `Il faut au moins une dizaine de signaux avec un résultat à ${refName} pour juger la stratégie${mode==="long"?" : compte plusieurs mois avant un premier verdict":""}. Ouvre la page régulièrement pour que les signaux soient relevés.`;
+  const wanted = mode==="court" ? "Opportunité" : "Bon potentiel";
+  el.innerHTML = `
+    <div class="tops seg" role="group" aria-label="Type de signal"><button type="button" data-bm="court" aria-pressed="${mode==="court"}">Court terme</button><button type="button" data-bm="long" aria-pressed="${mode==="long"}">Long terme</button></div>
+    <div class="card">
+      <div class="kpis two-k">${box("Résultat moyen à "+H[0][2],sA)}${box("Résultat moyen à "+H[1][2],sB)}</div>
+      <p class="plan-msg" style="margin:0">${verdict}</p>
+    </div>
+    <div class="card">
+      <h3 class="ct">Signaux « ${wanted} » relevés (${list.length})</h3>
+      ${list.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Crypto</th><th>Prix au signal</th><th>Depuis</th><th>${H[0][2]}</th><th>${H[1][2]}</th></tr></thead><tbody>
+        ${list.map(s=>{ const l=liveChange(s); const cell=([k,d])=> s[k]!=null ? `<td class="${cls(s[k])}">${pct(s[k])}</td>` : `<td><span class="sn">${Math.max(0,Math.ceil(d-(Date.now()-s.t)/864e5))} j</span></td>`;
+          return `<tr><td>${fdate(s.t)}</td><td><b>${s.sym}</b></td><td>${s.price.toLocaleString("fr-FR",{maximumSignificantDigits:6})} ${s.cur==="usd"?"$":"€"}</td><td class="${cls(l)}">${pct(l)}</td>${cell(H[0])}${cell(H[1])}</tr>`; }).join("")}
+      </tbody></table></div>` : `<p class="sn" style="margin:0">Aucun signal relevé pour l'instant. Dès qu'une crypto passe en « ${wanted} » dans l'onglet ${mode==="court"?"Court terme":"Long terme"}, elle est notée ici avec son prix.</p>`}
+      <p class="sn" style="margin:10px 0 0">Les résultats à ${H[0][2]} et ${H[1][2]} sont mesurés la première fois que tu ouvres la page après l'échéance. « Depuis » montre l'évolution jusqu'à maintenant.</p>
+      ${list.length?`<div class="actions" style="margin-top:10px"><button class="btn ghost" type="button" id="sigReset" style="color:var(--ink)">Effacer ce bilan</button></div>`:""}
+    </div>`;
+  el.querySelectorAll("[data-bm]").forEach(b=>b.onclick=()=>{ bilanMode=b.dataset.bm; store.set("bilanMode",bilanMode); render(); });
+  const r=$("#sigReset"); if(r) r.onclick=()=>{ if(r.dataset.confirm){ SIG.list=SIG.list.filter(s=>(s.mode||"court")!==mode); saveSIG(); render(); } else { r.dataset.confirm="1"; r.textContent="Confirmer l'effacement"; } };
+}
+
+
+/* ---------- Sauvegarde : export / import ---------- */
+const BK_KEYS = ["pf","favs","signals","alerts","ids","tab","horizon","cur","top","bilanMode","chartDays"];
+function exportBackup(){
+  const data = {app:"Radar Borg", version:1, date:new Date().toISOString(), data:{}};
+  BK_KEYS.forEach(k=>{ const v=store.get(k,undefined); if(v!==undefined) data.data[k]=v; });
+  const txt = JSON.stringify(data);
+  const name = "radar-borg-sauvegarde-"+today()+".json";
+  try{
+    const url = URL.createObjectURL(new Blob([txt],{type:"application/json"}));
+    const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    toast("Sauvegarde téléchargée : "+name);
+  }catch(e){
+    $("#sheetBody").innerHTML = `<div class="sh-top"><h2>Sauvegarde</h2><button class="btn ghost" type="button" id="close" style="color:var(--ink)">Fermer</button></div><p class="hint">Copie ce texte et garde-le dans une note.</p><textarea readonly id="bkTxt">${txt.replace(/</g,"&lt;")}</textarea>`;
+    $("#veil").hidden=false; $("#sheet").hidden=false; $("#close").onclick=closeSheet; $("#bkTxt").select();
+  }
+}
+function importBackup(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    let d; try{ d=JSON.parse(r.result); }catch(e){ toast("Ce fichier n'est pas une sauvegarde valide"); return; }
+    if(!d || d.app!=="Radar Borg" || !d.data){ toast("Ce fichier n'est pas une sauvegarde Radar Borg"); return; }
+    const n = (d.data.pf&&d.data.pf.buys||[]).length;
+    $("#sheetBody").innerHTML = `<div class="sh-top"><h2>Importer la sauvegarde</h2><button class="btn ghost" type="button" id="close" style="color:var(--ink)">Annuler</button></div>
+      <p class="hint">Sauvegarde du ${new Date(d.date).toLocaleString("fr-FR")} : ${n} opération${n>1?"s":""} de portefeuille, ${(d.data.favs||[]).length} favori(s), ${(d.data.signals&&d.data.signals.list||[]).length} signal(aux) au bilan.<br>Elle va <b>remplacer</b> les données actuelles de la page.</p>
+      <div class="actions"><button class="btn" type="button" id="bkOk">Remplacer par la sauvegarde</button></div>`;
+    $("#veil").hidden=false; $("#sheet").hidden=false; $("#close").onclick=closeSheet;
+    $("#bkOk").onclick=()=>{ Object.entries(d.data).forEach(([k,v])=>store.set(k,v)); toast("Sauvegarde importée"); setTimeout(()=>location.reload(), 600); };
+  };
+  r.readAsText(file);
+}
+
+/* ---------- Données ---------- */
+async function load(){
+  loadFng();
+  loadFx();
+  $("#stamp").textContent = "Actualisation…";
+  try{
+    // 1) Le Top 100 mondial : on garde automatiquement tout ce qui est sur SwissBorg
+    const top = "https://api.coingecko.com/api/v3/coins/markets?vs_currency="+cur+"&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=24h,7d,14d,30d,1y";
+    const r0 = await fetch(top);
+    if(r0.status===429) throw new Error("trop de demandes");
+    if(!r0.ok) throw new Error("erreur "+r0.status);
+    let all = await r0.json();
+    // 2) Les cryptos ajoutées à la main qui ne sont pas dans ce Top 100
+    const req = keepIds().filter(id=>!all.find(c=>c.id===id));
+    const chunks=[]; for(let i=0;i<req.length;i+=100) chunks.push(req.slice(i,i+100));
+    for(const ch of chunks){
+      const url="https://api.coingecko.com/api/v3/coins/markets?vs_currency="+cur+"&ids="+encodeURIComponent(ch.join(","))+"&sparkline=true&price_change_percentage=24h,7d,14d,30d,1y&per_page=250";
+      const r = await fetch(url);
+      if(r.status===429) throw new Error("trop de demandes");
+      if(!r.ok) throw new Error("erreur "+r.status);
+      all = all.concat(await r.json());
+    }
+    build(all);
+    pumpHist();
+    lastOk = new Date();
+    trackSignals();
+    checkAlerts();
+    store.set("cache_"+cur,{t:lastOk.getTime(),coins:all});
+    $("#stamp").textContent = "Mis à jour le "+lastOk.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})+" à "+lastOk.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  }catch(e){
+    const cache = store.get("cache_"+cur,null);
+    if(cache && !coins.length){ build(cache.coins); }
+    $("#stamp").textContent = coins.length
+      ? "Hors ligne ("+e.message+") · données du "+new Date(cache?cache.t:Date.now()).toLocaleString("fr-FR")
+      : "Impossible de joindre CoinGecko ("+e.message+")";
+    if(!coins.length) $("#list").innerHTML='<div class="state">Les cours ne sont pas accessibles. Vérifie ta connexion puis appuie sur Actualiser. Si le message parle de « trop de demandes », attends une minute.</div>';
+  }
+  render();
+}
+
+/* ---------- Affichage ---------- */
+const HINTS = {
+  court:"Horizon 1 semaine à 1 mois. Le score monte avec l'élan sur 7 à 30 jours et une tendance de fond haussière (moyennes 20 et 50 jours), et baisse en cas de surchauffe ou de marché défavorable.",
+  long:"Horizon plusieurs mois. Le score favorise les projets établis qui ont baissé loin de leur record mais commencent à se stabiliser.",
+  pf:"Tes achats SwissBorg, leur valeur actuelle et ton plan de sortie. Les montants sont convertis dans la devise choisie en haut.",
+  bilan:"Chaque signal est noté avec son prix puis vérifié plus tard : « Opportunité » du court terme à 1 semaine et 1 mois, « Bon potentiel » du long terme à 1 mois et 3 mois. Tu sauras ainsi si chaque stratégie marche vraiment.",
+  fav:"Tes cryptos épinglées, avec leur score court terme (1 semaine à 1 mois) et long terme. Vert = bon potentiel, orange = surchauffe, rouge = risqué. Appuie sur ☆ dans une fiche pour en ajouter."
+};
+function render(){
+  ["radar","fav","pf","bilan"].forEach(t=>$("#tab-"+t).setAttribute("aria-selected", t==="radar" ? (tab==="court"||tab==="long") : t===tab));
+  $("#hz").hidden = !(tab==="court"||tab==="long");
+  $("#hz").setAttribute("aria-checked", tab==="long");
+  const panel = tab==="pf" || tab==="bilan";
+  $(".bar").hidden = panel; $("#list").hidden = panel; $("#pane").hidden = !panel;
+  if(panel){ $("#hint").textContent = HINTS[tab]; if(coins.length) (tab==="pf"?renderPortfolio:renderBilan)($("#pane")); else $("#pane").innerHTML='<div class="card state">Chargement des cours…</div>'; return; }
+  $("#hint").textContent = HINTS[tab];
+  const q = $("#q").value.trim().toLowerCase();
+  const mode = tab==="long" ? "long" : "court";
+  const dual = tab==="fav";
+  let rows = coins.filter(c=>!q || c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q));
+  if(tab==="fav") rows = rows.filter(c=>favs.has(c.id));
+  else rows = rows.filter(c=>(c.market_cap_rank||999)<=topN);
+  document.querySelectorAll("#topf button").forEach(b=>{b.setAttribute("aria-pressed", +b.dataset.top===topN); b.disabled = tab==="fav";});
+  $("#topf").style.opacity = tab==="fav" ? ".45" : "1";
+  rows.sort((x,y)=> tab==="fav" ? (x.market_cap_rank||999)-(y.market_cap_rank||999) : y.a[mode]-x.a[mode]);
+  $("#count").textContent = rows.length+" crypto"+(rows.length>1?"s":"");
+  if(!coins.length) return;
+  if(!rows.length){ $("#list").innerHTML='<div class="state">'+(tab==="fav"?"Aucun favori pour l'instant. Ouvre une crypto et appuie sur ☆ Favori.":"Aucune crypto de ta liste ne correspond dans le Top "+topN+".")+'</div>'; return; }
+  $("#list").innerHTML = rows.map(c=>{
+    const sc = c.a[mode]; const [lab,lc]=label(sc,c.a,mode);
+    const both = dual ? ["court","long"].map(m=>{const [l,k]=label(c.a[m],c.a,m);
+      return `<span class="duo"><span class="sn">${m==="court"?"Court":"Long"}</span><span class="meter"><i style="width:${c.a[m]}%"></i></span><span class="chip ${k}" title="${l}">${c.a[m]}</span></span>`;}).join("") : "";
+    return `<button class="row${dual?" fav":""}" type="button" data-id="${c.id}">
+      <span class="star ${favs.has(c.id)?"on":""}">${favs.has(c.id)?"★":"☆"}</span>
+      <span class="name"><span class="logo">${icon(c)}<span class="rk">#${c.market_cap_rank??"—"}</span></span><span class="coin"><b>${c.symbol.toUpperCase()}</b> <span class="sn">${eur(c.current_price)}</span><small>${c.name}</small>${c.a.rel7!=null?`<span class="tagline">${relTag(c.a.rel7)}</span>`:""}</span></span>
+      <canvas class="mini" data-c="${c.id}" aria-label="Prix sur 7 jours"></canvas>
+      <span class="nums"><span class="${cls(c.a.ch7)}">7j ${pct(c.a.ch7)}</span><br><span class="${cls(c.a.ch30)}">30j ${pct(c.a.ch30)}</span></span>
+      ${dual ? `<span class="score both">${both}</span>` : `<span class="score"><span class="chip ${lc}">${lab}</span><span class="meter"><i style="width:${sc}%"></i></span><span class="sn">${sc}/100</span></span>`}
+    </button>${tab==="fav" ? (()=>{ const h=held(c.id); return `<div class="favact"><span class="held">${h?"Tu possèdes <b>"+h.qty.toLocaleString("fr-FR",{maximumFractionDigits:6})+" "+c.symbol.toUpperCase()+"</b> = <b>"+eur(h.value)+"</b> <b class=\""+cls(h.plPct)+"\">"+pct(h.plPct).replace(".",",")+"</b>":"Pas encore dans ton portefeuille"}</span><button type="button" class="btn b-buy" data-trade="buy" data-c="${c.id}">Acheter</button><button type="button" class="btn b-sell" data-trade="sell" data-c="${c.id}" ${h?"":"disabled"}>Vendre</button></div>`; })() : ""}`;
+  }).join("");
+  redrawMinis();
+}
+
+function drawSpark(cv, sp, coin, ts){
+  // ts : horodatages (ms) alignés sur sp ; sinon on suppose des points réguliers sur 7 jours jusqu'à maintenant
+  if(!ts || ts.length!==sp.length){ const t1=Date.now(), t0=t1-7*864e5; ts=sp.map((_,i)=>t0+i*(t1-t0)/Math.max(1,sp.length-1)); }
+  cv._chart={sp,coin,ts}; cv._hover=null;
+  if(!cv._bound){ cv._bound=true;
+    const move=e=>{ const r=cv.getBoundingClientRect(); cv._hover=(e.touches?e.touches[0].clientX:e.clientX)-r.left; paintSpark(cv); };
+    cv.addEventListener("pointermove",move); cv.addEventListener("pointerdown",move);
+    cv.addEventListener("pointerleave",()=>{ cv._hover=null; paintSpark(cv); });
+  }
+  paintSpark(cv);
+}
+function paintSpark(cv){
+  const {sp,coin,ts}=cv._chart||{}; if(!sp) return;
+  const dpr = window.devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight;
+  cv.width=w*dpr; cv.height=h*dpr; const g=cv.getContext("2d"); g.scale(dpr,dpr);
+  if(sp.length<2) return;
+  const cs=getComputedStyle(document.documentElement), ink=cs.getPropertyValue("--muted").trim(), line=cs.getPropertyValue("--line").trim(), fg=cs.getPropertyValue("--ink").trim(), bg=cs.getPropertyValue("--panel").trim();
+  const min=Math.min(...sp), max=Math.max(...sp);
+  const L=6, R=w-6, T=10, B=h-22; // zone du tracé, 22 px en bas pour les dates
+  const t0=ts[0], t1=ts[ts.length-1];
+  const X=t=>L+(t-t0)/((t1-t0)||1)*(R-L), Y=v=>T+(max-v)/((max-min)||1)*(B-T);
+  const col = coin ? coinColor(coin) : cs.getPropertyValue("--accent").trim();
+  g.font="10px "+cs.getPropertyValue("--mono"); g.textBaseline="top";
+  // Repères de dates
+  const span=t1-t0, days=span/864e5;
+  const step = days<=2 ? 6*3600e3 : days<=8 ? 864e5 : days<=31 ? 5*864e5 : 30*864e5;
+  const first=new Date(t0); first.setHours(0,0,0,0); let t=first.getTime(); if(step<864e5){ t=Math.ceil(t0/step)*step; }
+  while(t<t0) t+=step;
+  g.strokeStyle=line; g.lineWidth=1; g.fillStyle=ink; g.textAlign="center";
+  for(; t<=t1; t+=step){
+    const x=X(t); g.beginPath(); g.moveTo(x,T); g.lineTo(x,B); g.stroke();
+    const d=new Date(t);
+    const lab = step<864e5 ? d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})
+      : days<=8 ? d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"})
+      : d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
+    if(x>16 && x<w-16) g.fillText(lab,x,B+6);
+  }
+  g.beginPath(); g.moveTo(L,B); g.lineTo(R,B); g.stroke();
+  // Échelle de prix : lignes horizontales en pointillé sur des valeurs rondes
+  const raw=(max-min)/4 || max*0.01 || 1, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const pstep=[1,2,2.5,5,10].map(m=>m*mag).find(v=>v>=raw);
+  g.setLineDash([4,4]); g.strokeStyle=line; g.fillStyle=ink; g.textAlign="left"; g.textBaseline="bottom";
+  for(let v=Math.ceil(min/pstep)*pstep; v<=max+1e-12; v+=pstep){
+    const y=Y(v); if(y<T+2||y>B-2) continue;
+    g.beginPath(); g.moveTo(L,y); g.lineTo(R,y); g.stroke();
+    const dec = pstep>=1 ? 0 : Math.min(8,Math.ceil(-Math.log10(pstep))+ (pstep*Math.pow(10,Math.ceil(-Math.log10(pstep)))%1?1:0));
+    g.fillText(v.toLocaleString("fr-FR",{minimumFractionDigits:dec,maximumFractionDigits:dec})+(cur==="usd"?" $":" €"),L+2,y-2);
+  }
+  g.setLineDash([]);
+  // Courbe
+  g.beginPath(); sp.forEach((v,i)=>i?g.lineTo(X(ts[i]),Y(v)):g.moveTo(X(ts[i]),Y(v)));
+  g.strokeStyle=col; g.lineWidth=2; g.lineJoin="round"; g.stroke();
+  g.lineTo(X(t1),B); g.lineTo(X(t0),B); g.closePath();
+  g.globalAlpha=.12; g.fillStyle=col; g.fill(); g.globalAlpha=1;
+  g.beginPath(); g.arc(X(t1),Y(sp[sp.length-1]),3.5,0,7); g.fillStyle=col; g.fill();
+  // Curseur : date, heure et prix au point touché
+  if(cv._hover!=null){
+    const hx=Math.max(L,Math.min(R,cv._hover)); const tt=t0+(hx-L)/(R-L)*(t1-t0);
+    let i=0, best=Infinity; ts.forEach((v,k)=>{const d=Math.abs(v-tt); if(d<best){best=d;i=k;}});
+    const x=X(ts[i]), y=Y(sp[i]);
+    g.strokeStyle=ink; g.setLineDash([3,3]); g.beginPath(); g.moveTo(x,T); g.lineTo(x,B); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.arc(x,y,4,0,7); g.fillStyle=col; g.fill(); g.strokeStyle=bg; g.lineWidth=2; g.stroke();
+    const d=new Date(ts[i]);
+    const txt = d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})+" · "+eur(sp[i]);
+    g.font="600 11px "+cs.getPropertyValue("--mono"); const tw=g.measureText(txt).width+12;
+    const bx=Math.max(2,Math.min(w-tw-2,x-tw/2)), by=Math.max(0,Math.min(B-24,y-30));
+    g.fillStyle=bg; g.strokeStyle=line; g.lineWidth=1; g.beginPath(); g.roundRect ? g.roundRect(bx,by,tw,20,5) : g.rect(bx,by,tw,20); g.fill(); g.stroke();
+    g.fillStyle=fg; g.textAlign="left"; g.textBaseline="middle"; g.fillText(txt,bx+6,by+10);
+  }
+}
+
+function claudePrompt(c){
+  const a=c.a;
+  return `Je suis débutant en crypto et j'utilise SwissBorg. Aide-moi à comprendre si ${c.name} (${c.symbol.toUpperCase()}) est une opportunité, à court terme (1 semaine à 1 mois) et à long terme.
+Données du ${new Date().toLocaleString("fr-FR")} :
+- Prix : ${eur(c.current_price)} · rang #${c.market_cap_rank}
+- Variation : 24h ${pct(a.ch24)}, 7j ${pct(a.ch7)}, 30j ${pct(a.ch30)}, 1 an ${pct(a.ch1y)}
+- Écart au record historique : ${pct(a.dd)}
+- RSI (4h) : ${a.rsi!=null?a.rsi.toFixed(0):"—"} · volatilité journalière ≈ ${a.vol.toFixed(1)} %
+- Performance face à Bitcoin : 7j ${a.rel7!=null?pct(a.rel7):"—"}, 30j ${a.rel30!=null?pct(a.rel30):"—"}${btc?" (Bitcoin 7j "+pct(btc.a.ch7)+")":""}
+- Tendance de fond : ${a.ma50!=null?(c.current_price>a.ma20?"au-dessus":"sous")+" de sa moyenne 20 j, moyenne 20 j "+(a.ma20>a.ma50?"au-dessus":"sous")+" de la moyenne 50 j":"non calculée"} · marché ${regime==="up"?"porteur":regime==="down"?"défavorable":"neutre"}
+- Score court terme ${a.court}/100, long terme ${a.long}/100
+Explique simplement : ce que fait ce projet, les actualités récentes, les risques, et à quel prix ou dans quelle situation il serait plus raisonnable d'acheter ou d'attendre.`;
+}
+
+function openSheet(id){
+  const c = findCoin(id); if(!c) return; const a=c.a;
+  const [lc1,cc1]=label(a.court,a,"court"), [lc2,cc2]=label(a.long,a,"long");
+  $("#sheetBody").innerHTML = `
+    <div class="sh-top">${icon(c,"lg")}<h2>${c.name} <span class="sn">${c.symbol.toUpperCase()} · #${c.market_cap_rank??"—"}</span></h2>
+      <button class="btn ghost" type="button" id="close" style="color:var(--ink)">Fermer</button></div>
+    <p class="about" id="about"></p>
+    <div class="grid">
+      <div class="kv"><span>Prix</span><b>${eur(c.current_price)}</b></div>
+      <div class="kv"><span>24 h</span><b class="${cls(a.ch24)}">${pct(a.ch24)}</b></div>
+      <div class="kv"><span>7 jours</span><b class="${cls(a.ch7)}">${pct(a.ch7)}</b></div>
+      <div class="kv"><span>30 jours</span><b class="${cls(a.ch30)}">${pct(a.ch30)}</b></div>
+      <div class="kv"><span>1 an</span><b class="${cls(a.ch1y)}">${pct(a.ch1y)}</b></div>
+      <div class="kv"><span>Sous le record</span><b>${pct(a.dd)}</b></div>
+      <div class="kv"><span>Capitalisation</span><b>${big(c.market_cap)}</b></div>
+      <div class="kv"><span>Risque</span><b>${a.risk}</b></div>
+    </div>
+    ${a.rel7!=null ? `<div class="box"><h3>Face à Bitcoin ${relTag(a.rel7)}</h3><p style="margin:0;line-height:1.5">${c.name} ${relText(a.rel7,"7 jours")}${a.rel30!=null?", et "+relText(a.rel30,"30 jours").replace(/ que Bitcoin/,"")+"":""}. ${a.rel7>=2 && (a.rel30??0)>=0 ? "Elle surperforme de façon régulière : un bon signe pour une stratégie de suivi de tendance." : a.rel7<=-2 && (a.rel30??0)<=0 ? "Elle reste derrière Bitcoin depuis un moment : détenir du Bitcoin aurait mieux rapporté." : "Pas d'écart durable avec Bitcoin pour l'instant."}</p></div>` : ""}
+    <div class="chartbox">
+      <div class="chart-top"><div class="per" role="group" aria-label="Période du graphique"><button type="button" data-d="7">7 jours</button><button type="button" data-d="30">30 jours</button></div><span class="sn" id="chartInfo"></span></div>
+      <canvas id="spark"></canvas>
+    </div>
+    <div class="two">
+      <div class="box"><h3>Court terme · ${a.court}/100 <span class="chip ${cc1}">${lc1}</span></h3><ul class="reasons">${a.rs.map(r=>"<li>"+r+"</li>").join("")||"<li>Pas de signal marqué</li>"}</ul></div>
+      <div class="box"><h3>Long terme · ${a.long}/100 <span class="chip ${cc2}">${lc2}</span></h3><ul class="reasons">${a.rl.map(r=>"<li>"+r+"</li>").join("")||"<li>Pas de signal marqué</li>"}</ul></div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" type="button" id="iBought" style="color:var(--ink)">J'ai acheté</button>
+      <button class="btn" type="button" id="fav">${favs.has(id)?"★ Retirer des favoris":"☆ Ajouter aux favoris"}</button>
+      <button class="btn ghost" type="button" id="ask" style="color:var(--ink)">Copier une question pour Claude</button>
+    </div>`;
+  $("#veil").hidden=false; $("#sheet").hidden=false;
+  document.querySelectorAll(".per button").forEach(b=>b.onclick=()=>{ chartDays=+b.dataset.d; store.set("chartDays",chartDays); showChart(c); });
+  showChart(c);
+  loadAbout(c);
+  $("#close").onclick=closeSheet;
+  $("#iBought").onclick=()=>openBuy(id);
+  $("#fav").onclick=()=>{ favs.has(id)?favs.delete(id):favs.add(id); store.set("favs",[...favs]); openSheet(id); render(); };
+  $("#ask").onclick=async()=>{ const t=claudePrompt(c);
+    try{ await navigator.clipboard.writeText(t); toast("Question copiée : colle-la dans Claude"); }
+    catch(e){ $("#sheetBody").insertAdjacentHTML("beforeend",'<textarea readonly id="pt">'+t.replace(/</g,"&lt;")+'</textarea>'); $("#pt").select(); toast("Sélectionne et copie le texte"); } };
+}
+function closeSheet(){ $("#sheet").hidden=true; $("#veil").hidden=true; }
+
+function openSettings(){
+  $("#sheetBody").innerHTML = `
+    <div class="sh-top"><h2>Mes ajouts</h2><button class="btn ghost" type="button" id="close" style="color:var(--ink)">Fermer</button></div>
+    <p class="hint">Le radar suit déjà automatiquement toutes les cryptos SwissBorg du Top 100. Ajoute ici des cryptos en plus, par exemple au-delà du Top 100 : un identifiant CoinGecko par ligne (c'est le mot à la fin de l'adresse de la page CoinGecko, par exemple coingecko.com/fr/pi%C3%A8ces/<b>solana</b>). Seules les cryptos disponibles sur SwissBorg sont affichées : une crypto ajoutée ici mais absente de SwissBorg n'apparaîtra pas.</p>
+    <textarea id="ids">${ids.join("\n")}</textarea>
+    <div class="actions"><button class="btn" type="button" id="save">Enregistrer</button><button class="btn ghost" type="button" id="reset" style="color:var(--ink)">Liste par défaut</button></div>`;
+  $("#veil").hidden=false; $("#sheet").hidden=false;
+  $("#close").onclick=closeSheet;
+  $("#save").onclick=()=>{ ids=[...new Set($("#ids").value.split(/[\s,]+/).map(s=>s.trim().toLowerCase()).filter(Boolean))]; store.set("ids",ids); closeSheet(); toast("Liste enregistrée ("+ids.length+")"); load(); };
+  $("#reset").onclick=()=>{ $("#ids").value=DEFAULT_IDS.join("\n"); };
+}
+
+/* ---------- Événements ---------- */
+["fav","pf","bilan"].forEach(t=>$("#tab-"+t).onclick=()=>{tab=t;store.set("tab",t);render();});
+let horizon = store.get("horizon", tab==="long"?"long":"court");
+$("#tab-radar").onclick=()=>{ tab=horizon; store.set("tab",tab); render(); };
+$("#hz").onclick=()=>{ horizon = tab==="long" ? "court" : "long"; tab=horizon; store.set("horizon",horizon); store.set("tab",tab); render(); };
+$("#list").addEventListener("click",e=>{const t=e.target.closest("[data-trade]"); if(t){ openTrade(t.dataset.c,t.dataset.trade); return; } const r=e.target.closest(".row"); if(r) openSheet(r.dataset.id);});
+$("#q").addEventListener("input",render);
+document.querySelectorAll("#topf button").forEach(b=>b.onclick=()=>{topN=+b.dataset.top; store.set("top",topN); render();});
+function showCur(){ $("#btnCur").textContent = cur==="usd" ? "$ Dollar" : "€ Euro"; }
+showCur();
+$("#btnCur").onclick=()=>{ cur = cur==="eur" ? "usd" : "eur"; store.set("cur",cur); HIST = store.get("hist_"+cur, {}); showCur();
+  const cache = store.get("cache_"+cur,null);
+  if(cache){ build(cache.coins); render(); }
+  toast(cur==="usd"?"Affichage en dollars":"Affichage en euros"); load(); };
+$("#btnRefresh").onclick=load;
+$("#btnSettings").onclick=openSettings;
+$("#btnAlerts").onclick=()=>openAlerts();
+renderAlertBar();
+$("#veil").onclick=closeSheet;
+document.addEventListener("keydown",e=>{if(e.key==="Escape") closeSheet();});
+load();
+setInterval(load, 5*60*1000);
+</script>
+</body>
+</html>
